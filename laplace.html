@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laplace Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --page:#CBD0D4; --face:#E7E9EB; --face2:#DEE1E4; --text:#1B2025; --text2:#545D66; --rule:#B6BDC3;
+  --bezel:#242A30; --key-hi:#F6F7F8; --key-lo:#D6DADE; --key-edge:#959DA5; --teal:#0D6A74; --teal-hi:#118490; --paper:#F7F8F6;
+  --scr:#0F1C22; --ok:#127A4A; --warn:#8E5E00; --bad:#A8221B;
+  --f-ui:"Archivo","Helvetica Neue",Arial,sans-serif; --f-math:"STIX Two Text","Cambria Math","Times New Roman",serif; --f-code:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:400 15px/1.55 var(--f-ui);font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 18px 64px;display:flex;flex-direction:column;gap:16px}
+header{background:var(--bezel);color:#EEF2F4;border-radius:10px;padding:16px 20px 14px;display:flex;flex-direction:column;gap:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(0,0,0,.18)}
+h1{margin:0;font:800 30px/1 var(--f-ui);font-stretch:125%;letter-spacing:.01em}
+.tag{margin:6px 0 0;font-size:14px;color:#A9B4BC;font-stretch:95%}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:8px;background:#151A1F;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+.tabs button{flex:1 1 auto;font:600 14px/1 var(--f-ui);font-stretch:90%;padding:10px 12px;border-radius:5px;border:0;cursor:pointer;color:#C7D0D6;background:transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:linear-gradient(var(--key-hi),var(--key-lo));color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.tabs button:not([aria-selected="true"]):hover{color:#fff}
+.view{display:none;flex-direction:column;gap:16px}
+.view.active{display:flex}
+.module{background:var(--face);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 2px rgba(0,0,0,.07)}
+.module.ctrl{background:var(--face2)}
+h2{margin:0;font:650 18px/1.25 var(--f-ui);font-stretch:92%}
+.lead{margin:0;color:var(--text2);max-width:78ch}
+.lead b{color:var(--text);font-weight:600}
+.lab{font:600 13px/1.3 var(--f-ui);font-stretch:87.5%;color:var(--text2)}
+.screens{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.screens.wide{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+@media (max-width:880px){.screens,.screens.wide{grid-template-columns:minmax(0,1fr)}}
+.scr{display:flex;flex-direction:column;gap:6px;min-width:0}
+canvas.s{display:block;width:100%;background:var(--scr);border:6px solid var(--bezel);border-radius:8px}
+canvas.drag{cursor:crosshair;touch-action:none}
+.cap{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.legend span{display:flex;align-items:center;gap:7px;background:var(--bezel);color:#D9E4E7;font:500 12.5px/1 var(--f-ui);font-stretch:90%;padding:5px 9px;border-radius:4px}
+.sw{display:inline-block;width:16px;border-top:2.5px solid}
+.sliders{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 28px}
+@media (max-width:700px){.sliders{grid-template-columns:minmax(0,1fr)}}
+.sl{display:grid;grid-template-columns:auto 1fr 60px;align-items:center;gap:12px}
+.sl label{font:600 14px var(--f-ui);font-stretch:90%;min-width:120px}
+.sl output{font:600 16px var(--f-ui);text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;height:24px;background:transparent;cursor:pointer;margin:0;width:100%}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:#9AA2AA;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#9AA2AA;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;border:1px solid #5F6870;background:radial-gradient(circle at 50% 38%,#fff,#C5CBD0 72%);box-shadow:0 1px 3px rgba(0,0,0,.45)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:1px solid #5F6870;background:radial-gradient(circle at 50% 38%,#fff,#C5CBD0 72%)}
+input[type=text],input[type=number],select{font:500 15px var(--f-code);color:var(--text);background:var(--paper);border:1px solid var(--key-edge);border-radius:6px;padding:8px 10px;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+select{font-family:var(--f-ui);font-weight:500}
+input[type=number]{width:96px}
+.btn,.chip{font:600 13.5px/1.1 var(--f-ui);font-stretch:90%;color:var(--text);cursor:pointer;border:1px solid var(--key-edge);border-radius:5px;background:linear-gradient(var(--key-hi),var(--key-lo));box-shadow:inset 0 1px 0 #fff,0 1px 1.5px rgba(0,0,0,.22);padding:9px 13px}
+.chip{font-weight:500;padding:6px 10px}
+.btn:hover,.chip:hover{border-color:#6E7780}
+.btn:active,.chip:active{transform:translateY(1px);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.btn[aria-pressed="true"]{background:linear-gradient(#3A424A,#2A3037);color:#fff;border-color:#1A1F24;position:relative;padding-left:24px}
+.btn[aria-pressed="true"]::before{content:"";position:absolute;left:10px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#53E6A6;box-shadow:0 0 6px #53E6A6}
+.btn.run{background:linear-gradient(var(--teal-hi),var(--teal));color:#fff;border-color:#08484F;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 2px rgba(0,0,0,.3)}
+.btn:focus-visible,.chip:focus-visible,.tabs button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible{outline:2px solid var(--teal-hi);outline-offset:2px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plate{font:400 21px/1.55 var(--f-math);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:10px 16px;text-align:center;overflow-x:auto}
+.plate small{font-size:15px;color:var(--text2)}
+.lcd{font:400 14.5px/1.75 var(--f-ui);background:var(--scr);color:#CFDDE0;border:4px solid var(--bezel);border-radius:6px;padding:10px 14px}
+.lcd b{color:#fff;font-weight:600}
+.qa{display:grid;grid-template-columns:minmax(160px,230px) minmax(0,1fr);margin:0}
+.qa dt,.qa dd{padding:9px 0;border-top:1px solid var(--rule);margin:0}
+.qa dt{font-weight:600;font-stretch:92%;color:var(--text2);padding-right:14px}
+@media (max-width:600px){.qa{grid-template-columns:1fr}.qa dd{border-top:0;padding-top:0}}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+.note{border-left:3px solid var(--teal);background:var(--face2);padding:10px 14px;border-radius:0 6px 6px 0;color:var(--text2);margin:0}
+.note b{color:var(--text)}
+.exp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:880px){.exp{grid-template-columns:minmax(0,1fr)}}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:st}
+.steps li{position:relative;padding:10px 14px 10px 46px;background:var(--paper);border:1px solid var(--rule);border-radius:6px;font:400 18px/1.6 var(--f-math)}
+.steps li::before{counter-increment:st;content:counter(st);position:absolute;left:12px;top:11px;width:22px;height:22px;border-radius:50%;background:var(--bezel);color:#fff;font:600 12.5px/22px var(--f-ui);text-align:center}
+.steps li .why{display:block;font:400 13.5px/1.45 var(--f-ui);color:var(--text2);margin-bottom:2px}
+.inputs{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end}
+.inputs label{display:flex;flex-direction:column;gap:4px;font:600 13px var(--f-ui);font-stretch:88%;color:var(--text2)}
+.err{color:var(--bad);font-size:14px;min-height:0}
+sup{font-size:.7em}
+@media (prefers-reduced-motion:reduce){.btn:active,.chip:active{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Laplace Lab</h1><p class="tag">Poles, stability and step responses: drag, measure, solve</p></div>
+  <nav class="tabs" role="tablist" aria-label="Experiments">
+    <button role="tab" data-tab="t1" aria-selected="true">First order</button>
+    <button role="tab" data-tab="t2" aria-selected="false">Linearity</button>
+    <button role="tab" data-tab="t3" aria-selected="false">Second order</button>
+    <button role="tab" data-tab="t4" aria-selected="false">Pole sweep</button>
+    <button role="tab" data-tab="t5" aria-selected="false">Sensor test</button>
+    <button role="tab" data-tab="t6" aria-selected="false">Transform calculator</button>
+    <button role="tab" data-tab="t7" aria-selected="false">Solve an ODE</button>
+  </nav>
+</header>
+
+<!-- ============ T1 FIRST ORDER ============ -->
+<section class="view active" id="t1">
+  <div class="module ctrl">
+    <h2>A first-order system: K / (s + a)</h2>
+    <p class="lead">Set the gain and the pole, or <b>drag the pole</b> along the s-plane. Then apply a step and watch the output charge up like a capacitor.</p>
+    <div class="sliders">
+      <div class="sl"><label for="K">Gain K</label><input type="range" id="K" min="0.5" max="10" step="0.1" value="4"><output id="K-out">4.0</output></div>
+      <div class="sl"><label for="apole">Pole location a</label><input type="range" id="apole" min="-3" max="15" step="0.1" value="2"><output id="apole-out">2.0</output></div>
+    </div>
+    <div class="plate" id="tf1"></div>
+  </div>
+  <div class="screens">
+    <div class="scr"><div class="cap"><span class="lab">s-plane (drag the pole)</span></div><canvas class="s drag" id="pp1" tabindex="0" aria-label="s-plane with draggable pole"></canvas></div>
+    <div class="scr"><div class="cap"><span class="lab">Step response c(t)</span><div class="legend" id="lg1"></div></div><canvas class="s" id="rp1"></canvas></div>
+  </div>
+  <div class="module">
+    <div class="cap"><h2>Experiment: apply a 1-unit step</h2><button class="btn run" id="run1">Apply step</button></div>
+    <div class="exp">
+      <canvas class="s" id="meter1" aria-label="Output meter"></canvas>
+      <div class="lcd" id="lcd1"></div>
+    </div>
+  </div>
+  <div class="module">
+    <h2>What the numbers mean</h2>
+    <dl class="qa">
+      <dt>Is it stable?</dt><dd id="t1-stable"></dd>
+      <dt>What sets the speed?</dt><dd id="t1-speed"></dd>
+      <dt>What sets the final value?</dt><dd id="t1-amp"></dd>
+      <dt>Increase K only</dt><dd>The curve gets taller but reaches steady state in exactly the same time. Speed is unchanged.</dd>
+      <dt>Increase a only</dt><dd>The pole moves left, the response settles faster, and the final value K/a drops because a is in the denominator.</dd>
+    </dl>
+    <p class="note">This is the exact model of an <b>RC low-pass filter</b> (a = 1/RC) or a temperature or light sensor. Engineers choose a for speed and set K separately with amplifier gain.</p>
+  </div>
+</section>
+
+<!-- ============ T2 LINEARITY ============ -->
+<section class="view" id="t2">
+  <div class="module ctrl">
+    <h2>Linearity: L{a·f + b·g} = a·F + b·G</h2>
+    <p class="lead">Pick two signals and two weights. The transform of the mix is the same mix of the transforms. <b>Move across the screen</b> to read the values at any instant.</p>
+    <div class="sliders">
+      <div class="sl"><label for="fsel">Signal f(t)</label><select id="fsel"><option value="step">Unit step: 1</option><option value="exp">Exponential: e^−t</option><option value="sin">Sinusoid: sin 3t</option></select><span></span></div>
+      <div class="sl"><label for="lin_a">Weight a</label><input type="range" id="lin_a" min="-3" max="3" step="0.1" value="2"><output id="lin_a-out">2.0</output></div>
+      <div class="sl"><label for="gsel">Signal g(t)</label><select id="gsel"><option value="ramp">Unit ramp: t</option><option value="step">Unit step: 1</option><option value="exp">Exponential: e^−t</option></select><span></span></div>
+      <div class="sl"><label for="lin_b">Weight b</label><input type="range" id="lin_b" min="-3" max="3" step="0.1" value="1"><output id="lin_b-out">1.0</output></div>
+    </div>
+    <div class="plate" id="combeq"></div>
+  </div>
+  <div class="scr"><div class="cap"><span class="lab">h(t) = a·f(t) + b·g(t)</span><div class="legend" id="lg2"></div></div><canvas class="s" id="rp2" style="cursor:col-resize" aria-label="Superposition plot"></canvas></div>
+  <div class="lcd" id="lcd2"></div>
+  <p class="note"><b>Superposition:</b> a linear circuit's response to several sources equals the weighted sum of its responses to each source alone. A receiver mixing signal and noise, an audio mixer, a DC bias on an AC input: each is a·f(t) + b·g(t) and can be analysed term by term in the s-domain.</p>
+</section>
+
+<!-- ============ T3 SECOND ORDER ============ -->
+<section class="view" id="t3">
+  <div class="module ctrl">
+    <h2>A second-order system: ωₙ² / (s² + 2ζωₙ s + ωₙ²)</h2>
+    <p class="lead">Use the sliders or <b>drag the upper pole</b>. Moving it up makes it oscillate faster; moving it toward the jω-axis makes it ring longer. Then release the mass and watch.</p>
+    <div class="sliders">
+      <div class="sl"><label for="zeta">Damping ratio ζ</label><input type="range" id="zeta" min="-0.3" max="2" step="0.02" value="0.3"><output id="zeta-out">0.30</output></div>
+      <div class="sl"><label for="wn">Natural frequency ωₙ</label><input type="range" id="wn" min="0.5" max="8" step="0.1" value="3"><output id="wn-out">3.0</output></div>
+    </div>
+    <div class="ctl"><span class="lab">Presets</span>
+      <button class="chip" data-z="0" data-w="3">Undamped</button><button class="chip" data-z="0.15" data-w="3">Lightly damped</button><button class="chip" data-z="0.7" data-w="3">ζ = 0.7 (design sweet spot)</button><button class="chip" data-z="1" data-w="3">Critically damped</button><button class="chip" data-z="1.8" data-w="3">Overdamped</button><button class="chip" data-z="-0.1" data-w="3">Unstable</button>
+    </div>
+    <div class="plate" id="tf3"></div>
+  </div>
+  <div class="screens">
+    <div class="scr"><div class="cap"><span class="lab">s-plane (drag the upper pole)</span></div><canvas class="s drag" id="pp3" aria-label="s-plane with draggable pole pair"></canvas></div>
+    <div class="scr"><div class="cap"><span class="lab">Step response c(t)</span><div class="legend" id="lg3"></div></div><canvas class="s" id="rp3"></canvas></div>
+  </div>
+  <div class="module">
+    <div class="cap"><h2>Experiment: a mass on a spring with a damper</h2><button class="btn run" id="run3">Release</button></div>
+    <div class="exp">
+      <canvas class="s" id="mass3" aria-label="Mass spring damper animation"></canvas>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="lcd" id="lcd3"></div>
+        <p class="note">A step force pulls the mass to a new resting point. <b>ωₙ</b> is set by the spring stiffness and mass, <b>ζ</b> by the damper. The same equation describes an RLC circuit, a car's suspension and a PLL loop filter.</p>
+      </div>
+    </div>
+  </div>
+  <div class="module">
+    <h2>What the numbers mean</h2>
+    <dl class="qa">
+      <dt>Is it stable?</dt><dd id="t3-stable"></dd>
+      <dt>How fast does it settle?</dt><dd id="t3-speed"></dd>
+      <dt>Will it oscillate?</dt><dd id="t3-osc"></dd>
+      <dt>Peak overshoot</dt><dd id="t3-overshoot"></dd>
+      <dt>How would an engineer improve it?</dt><dd id="t3-improve"></dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ============ T4 POLE SWEEP ============ -->
+<section class="view" id="t4">
+  <div class="module ctrl">
+    <h2>Pole sweep: F(s) = 1 / (s + a)</h2>
+    <p class="lead">Move the pole, drag it, or let it sweep. Faint traces keep earlier responses so you can compare.</p>
+    <div class="sliders">
+      <div class="sl"><label for="poleAnim">Pole location a</label><input type="range" id="poleAnim" min="-4" max="15" step="0.1" value="1"><output id="poleAnim-out">1.0</output></div>
+      <div class="ctl"><button class="btn run" id="animBtn">Sweep from −4 to 15</button><button class="btn" id="clr4">Clear traces</button></div>
+    </div>
+  </div>
+  <div class="screens">
+    <div class="scr"><span class="lab">s-plane (drag the pole)</span><canvas class="s drag" id="pp4"></canvas></div>
+    <div class="scr"><span class="lab">Step response c(t), 0 to 5 s</span><canvas class="s" id="rp4"></canvas></div>
+  </div>
+  <div class="lcd" id="t4-live"></div>
+  <p class="note">Pattern to notice: pole moving left means faster. Pole moving toward zero means slower. Pole crossing into the right half-plane means unstable.</p>
+</section>
+
+<!-- ============ T5 SENSOR ============ -->
+<section class="view" id="t5">
+  <div class="module ctrl">
+    <h2>Sensor test: how fast does each sensor respond?</h2>
+    <p class="lead">Every sensor here is modelled as 1 / (s + a). Pick one, apply a sudden step change, and time how long it takes to read the new value.</p>
+    <div class="ctl">
+      <button class="btn sensor-btn" data-a="0.2" aria-pressed="false">Slow thermal probe</button>
+      <button class="btn sensor-btn" data-a="2" aria-pressed="true">Standard sensor</button>
+      <button class="btn sensor-btn" data-a="8" aria-pressed="false">Fast photodiode</button>
+    </div>
+    <div class="plate" id="tf5"></div>
+  </div>
+  <div class="screens">
+    <div class="scr"><span class="lab">s-plane</span><canvas class="s" id="pp5"></canvas></div>
+    <div class="scr"><div class="cap"><span class="lab">Sensor reading after a step (normalised)</span><button class="btn run" id="run5">Apply step</button></div><canvas class="s" id="rp5"></canvas></div>
+  </div>
+  <div class="module">
+    <dl class="qa">
+      <dt>Time constant τ = 1/a</dt><dd id="t5-tau"></dd>
+      <dt>Reads 63% after</dt><dd id="t5-63"></dd>
+      <dt>Settled (98%) after ≈ 4τ</dt><dd id="t5-settle"></dd>
+    </dl>
+    <p class="note" id="t5-extc"></p>
+  </div>
+</section>
+
+<!-- ============ T6 CALCULATOR ============ -->
+<section class="view" id="t6">
+  <div class="module ctrl">
+    <div class="ctl"><button class="btn subtab" data-sub="s6a" aria-pressed="true">f(t) → F(s)</button><button class="btn subtab" data-sub="s6b" aria-pressed="false">F(s) → f(t), with working</button></div>
+  </div>
+  <div id="s6a" class="view active">
+    <div class="module ctrl">
+      <h2>Forward transform</h2>
+      <p class="lead">Type f(t) using constants, t, t^n, exp(a*t), sin(w*t), cos(w*t), exp(a*t)*sin(w*t), exp(a*t)*cos(w*t), joined with + and −. Use * for every multiplication.</p>
+      <div class="ctl"><input type="text" id="ftInput" value="3*exp(-2*t)+5*sin(4*t)" style="flex:1;min-width:240px" spellcheck="false" aria-label="f(t)"></div>
+      <div class="ctl"><span class="lab">Try</span><button class="chip ftex">3*exp(-2*t)+5*sin(4*t)</button><button class="chip ftex">t^2-4*t+1</button><button class="chip ftex">2*exp(-t)*cos(3*t)</button><button class="chip ftex">exp(0.5*t)</button></div>
+    </div>
+    <div class="module"><h2>Term by term</h2><ol class="steps" id="ftTerms"></ol><div class="plate" id="ftCombined"></div></div>
+    <div class="scr"><span class="lab">f(t), computed directly from your expression</span><canvas class="s" id="ftPlot"></canvas></div>
+    <p class="note" id="ftInterp"></p>
+  </div>
+  <div id="s6b" class="view">
+    <div class="module ctrl">
+      <h2>Inverse transform of F(s) = (b₁s + b₀) / (s² + p s + q)</h2>
+      <p class="lead">Type the coefficients, or <b>drag the pole pair</b> on the s-plane. The working below updates as you go.</p>
+      <div class="inputs">
+        <label>b₁<input type="number" id="Fb1" value="0" step="0.1"></label>
+        <label>b₀<input type="number" id="Fb0" value="9" step="0.1"></label>
+        <label>p<input type="number" id="Fp" value="3" step="0.1"></label>
+        <label>q<input type="number" id="Fq" value="9" step="0.1"></label>
+      </div>
+      <div class="plate" id="FsDisplay"></div>
+    </div>
+    <div class="screens">
+      <div class="scr"><span class="lab">Poles: roots of s² + p s + q (drag)</span><canvas class="s drag" id="FsPolePlot"></canvas></div>
+      <div class="scr"><span class="lab">f(t) = inverse transform</span><canvas class="s" id="FsRespPlot"></canvas></div>
+    </div>
+    <div class="module"><h2>Working</h2><ol class="steps" id="FsSteps"></ol>
+      <dl class="qa"><dt>Stable?</dt><dd id="Fs-stable"></dd><dt>Oscillatory?</dt><dd id="Fs-osc"></dd></dl></div>
+  </div>
+</section>
+
+<!-- ============ T7 ODE ============ -->
+<section class="view" id="t7">
+  <div class="module ctrl">
+    <h2>Solve y″ + a·y′ + b·y = K with the Laplace transform</h2>
+    <p class="lead">This is what the Laplace transform is for in exams and in circuits: it turns a differential equation into algebra. Set the equation and the starting conditions; the full working appears below, and a separate numerical simulation checks the answer.</p>
+    <div class="inputs">
+      <label>a<input type="number" id="oa" value="3" step="0.5"></label>
+      <label>b<input type="number" id="ob" value="2" step="0.5"></label>
+      <label>K (step input)<input type="number" id="oK" value="2" step="0.5"></label>
+      <label>y(0)<input type="number" id="oy0" value="0" step="0.5"></label>
+      <label>y′(0)<input type="number" id="oy1" value="0" step="0.5"></label>
+    </div>
+    <div class="ctl"><span class="lab">Try</span>
+      <button class="chip ode" data-v="3,2,2,0,0">Overdamped</button>
+      <button class="chip ode" data-v="2,5,5,0,0">Underdamped</button>
+      <button class="chip ode" data-v="4,4,4,0,0">Repeated root</button>
+      <button class="chip ode" data-v="0,4,0,1,0">Free oscillation</button>
+      <button class="chip ode" data-v="-0.4,4,0,1,0">Growing (unstable)</button>
+      <button class="chip ode" data-v="5,6,0,2,-1">Initial conditions only</button>
+    </div>
+    <div class="plate" id="odeEq"></div>
+    <div class="err" id="odeErr"></div>
+  </div>
+  <div class="module"><h2>Working</h2><ol class="steps" id="odeSteps"></ol></div>
+  <div class="screens wide">
+    <div class="scr"><div class="cap"><span class="lab">y(t): Laplace answer vs numerical simulation</span><div class="legend" id="lg7"></div></div><canvas class="s" id="odePlot"></canvas></div>
+    <div class="scr"><span class="lab">Poles of Y(s)</span><canvas class="s" id="odePoles"></canvas></div>
+  </div>
+  <div class="lcd" id="odeCheck"></div>
+</section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const SC={grid:'rgba(140,178,188,.13)',axis:'rgba(170,206,216,.4)',txt:'#8AA3AB',ink:'#E4EEF0',y:'#F5C518',c:'#2BC4EE',m:'#EE5BA6',g:'#3FD08A',r:'#FF6B5E',dim:'#7D939A'};
+const FONT='500 12px Archivo, sans-serif';
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const f3=v=>{if(!isFinite(v))return '∞';if(Math.abs(v)<5e-7)return '0';return (+v.toFixed(3)).toString().replace('-','−')};
+const f2=v=>(Math.abs(v)<5e-7?'0':(+v.toFixed(2)).toString().replace('-','−'));
+function legend(el,items){el.innerHTML=items.map(([c,t,d])=>`<span><i class="sw" style="border-color:${c};border-top-style:${d?'dashed':'solid'}"></i>${t}</span>`).join('')}
+
+/* ---------- canvas helpers ---------- */
+function setup(id,h){const cv=$(id),d=devicePixelRatio||1,w=cv.clientWidth||440;cv.width=w*d;cv.height=h*d;cv.style.height=h+'px';const ctx=cv.getContext('2d');ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);return {ctx,w,h,cv}}
+function niceStep(span,n){const raw=span/n,p=10**Math.floor(Math.log10(raw)),m=raw/p;return (m<1.5?1:m<3?2:m<7?5:10)*p}
+function tickTxt(v){if(Math.abs(v)<1e-9)return '0';const a=Math.abs(v);return (a>=1000?v.toExponential(0):a>=100?v.toFixed(0):a>=10?(+v.toFixed(1)).toString():(+v.toFixed(2)).toString()).replace('-','−')}
+function sample(f,t0,t1,n){const a=[];for(let i=0;i<=n;i++){let v=f(t0+(t1-t0)*i/n);if(!isFinite(v))v=NaN;a.push(Math.max(-1e6,Math.min(1e6,v)))}return a}
+
+function timePlot(id,h,tmax,series,opt={}){
+  const {ctx,w,cv}=setup(id,h),L=48,R=12,T=12,B=28,n=400,t0=opt.t0||0;
+  let mn=0,mx=0;
+  series.forEach(s=>{if(s.dots){s.dots.forEach(([,v])=>{if(isFinite(v)&&Math.abs(v)<1e6){mn=Math.min(mn,v);mx=Math.max(mx,v)}});return}if(!s.vals)s.vals=sample(s.f,t0,tmax,n);s.vals.forEach(v=>{if(isFinite(v)){mn=Math.min(mn,v);mx=Math.max(mx,v)}})});
+  (opt.refs||[]).forEach(r=>{mn=Math.min(mn,r);mx=Math.max(mx,r)});
+  if(mx-mn<1e-9){mx+=1;mn-=1}const pad=(mx-mn)*.1;mn-=pad;mx+=pad;if(opt.y){mn=opt.y[0];mx=opt.y[1]}
+  const X=t=>L+(t-t0)/(tmax-t0)*(w-L-R),Y=v=>T+(mx-v)/(mx-mn)*(h-T-B);
+  ctx.font=FONT;ctx.lineWidth=1;
+  const sx=niceStep(tmax-t0,7),sy=niceStep(mx-mn,5);
+  ctx.strokeStyle=SC.grid;ctx.fillStyle=SC.txt;ctx.textAlign='center';
+  for(let t=Math.ceil(t0/sx)*sx;t<=tmax+1e-9;t+=sx){ctx.beginPath();ctx.moveTo(X(t),T);ctx.lineTo(X(t),h-B);ctx.stroke();ctx.fillText(tickTxt(t),X(t),h-9)}
+  ctx.textAlign='right';
+  for(let v=Math.ceil(mn/sy)*sy;v<=mx;v+=sy){ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(w-R,Y(v));ctx.stroke();ctx.fillText(tickTxt(v),L-6,Y(v)+4)}
+  ctx.strokeStyle=SC.axis;ctx.beginPath();ctx.moveTo(L,Y(0));ctx.lineTo(w-R,Y(0));ctx.stroke();
+  ctx.textAlign='left';ctx.fillText('t (s)',w-R-28,h-B-6);
+  (opt.refs||[]).forEach(r=>{ctx.strokeStyle=SC.dim;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(L,Y(r));ctx.lineTo(w-R,Y(r));ctx.stroke();ctx.setLineDash([])});
+  if(opt.band){ctx.fillStyle='rgba(63,208,138,.10)';ctx.fillRect(L,Y(opt.band[1]),w-L-R,Y(opt.band[0])-Y(opt.band[1]))}
+  ctx.save();ctx.beginPath();ctx.rect(L,T,w-L-R,h-T-B);ctx.clip();
+  series.forEach(s=>{
+    ctx.strokeStyle=s.color;ctx.lineWidth=s.width||2.4;ctx.setLineDash(s.dash||[]);ctx.globalAlpha=s.alpha??1;ctx.shadowColor=s.color;ctx.shadowBlur=s.glow?6:0;
+    if(s.dots){ctx.fillStyle=s.color;s.dots.forEach(([t,v])=>{if(t<=tmax&&isFinite(v)){ctx.beginPath();ctx.arc(X(t),Y(v),3,0,7);ctx.fill()}})}
+    else{ctx.beginPath();let pen=false;s.vals.forEach((v,i)=>{const t=t0+(tmax-t0)*i/n;if(!isFinite(v)||(s.upto!=null&&t>s.upto)){pen=false;return}pen?ctx.lineTo(X(t),Y(v)):ctx.moveTo(X(t),Y(v));pen=true});ctx.stroke()}
+    ctx.setLineDash([]);ctx.globalAlpha=1;ctx.shadowBlur=0});
+  ctx.restore();
+  if(opt.cursor!=null){ctx.strokeStyle=SC.ink;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(X(opt.cursor),T);ctx.lineTo(X(opt.cursor),h-B);ctx.stroke();ctx.setLineDash([])}
+  const m={X,Y,L,R,w,tmax,t0,ctx};cv._t=m;return m;
+}
+function marker(m,t,v,col,label){const c=m.ctx;c.fillStyle=col;c.beginPath();c.arc(m.X(t),m.Y(v),4.5,0,7);c.fill();if(label){c.font=FONT;c.textAlign='left';c.fillText(label,m.X(t)+8,m.Y(v)-8)}}
+
+function drawPlane(id,h,poles,view,opt={}){
+  const {ctx,w,cv}=setup(id,h),L=8,R=8,T=8,B=22;
+  const X=re=>L+(re-view.r0)/(view.r1-view.r0)*(w-L-R),Y=im=>T+(view.i1-im)/(2*view.i1)*(h-T-B);
+  ctx.fillStyle='rgba(255,107,94,.09)';ctx.fillRect(X(0),T,X(view.r1)-X(0),h-T-B);
+  ctx.font=FONT;ctx.lineWidth=1;ctx.strokeStyle=SC.grid;ctx.fillStyle=SC.txt;
+  const sr=niceStep(view.r1-view.r0,8),si=niceStep(2*view.i1,6);
+  ctx.textAlign='center';
+  for(let r=Math.ceil(view.r0/sr)*sr;r<=view.r1;r+=sr){ctx.beginPath();ctx.moveTo(X(r),T);ctx.lineTo(X(r),h-B);ctx.stroke();ctx.fillText(tickTxt(r),X(r),h-6)}
+  ctx.textAlign='left';
+  for(let i=Math.ceil(-view.i1/si)*si;i<=view.i1;i+=si){ctx.beginPath();ctx.moveTo(L,Y(i));ctx.lineTo(w-R,Y(i));ctx.stroke();if(Math.abs(i)>1e-9&&Y(i)>T+22)ctx.fillText(tickTxt(i),X(0)+5,Y(i)-3)}
+  ctx.strokeStyle=SC.axis;ctx.beginPath();ctx.moveTo(L,Y(0));ctx.lineTo(w-R,Y(0));ctx.stroke();
+  ctx.strokeStyle=SC.c;ctx.lineWidth=2;ctx.shadowColor=SC.c;ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(X(0),T);ctx.lineTo(X(0),h-B);ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle=SC.c;ctx.fillText('jω',X(0)+5,T+12);ctx.fillStyle=SC.txt;ctx.fillText('σ',w-R-12,Y(0)-6);
+  ctx.fillStyle='rgba(63,208,138,.75)';ctx.fillText('stable',L+4,T+12);
+  ctx.fillStyle='rgba(255,107,94,.85)';ctx.textAlign='right';if(X(view.r1)-X(0)>95)ctx.fillText('unstable',w-R-4,T+12);
+  (opt.traces||[]).forEach(p=>{ctx.strokeStyle='rgba(245,197,24,.25)';ctx.lineWidth=1.5;cross(ctx,X(p[0]),Y(p[1]),5)});
+  poles.forEach(p=>{let px=X(p[0]),py=Y(p[1]);const out=px<L||px>w-R||py<T||py>h-B;px=Math.max(L+6,Math.min(w-R-6,px));py=Math.max(T+6,Math.min(h-B-6,py));
+    ctx.strokeStyle=SC.y;ctx.lineWidth=2.8;ctx.shadowColor=SC.y;ctx.shadowBlur=out?0:8;ctx.globalAlpha=out?.5:1;cross(ctx,px,py,7);ctx.shadowBlur=0;ctx.globalAlpha=1});
+  (opt.zeros||[]).forEach(z=>{ctx.strokeStyle=SC.c;ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(z[0]),Y(z[1]),6,0,7);ctx.stroke()});
+  cv._map={inv:(px,py)=>[view.r0+(px-L)/(w-L-R)*(view.r1-view.r0),view.i1-(py-T)/(h-T-B)*2*view.i1]};
+}
+function cross(c,x,y,s){c.beginPath();c.moveTo(x-s,y-s);c.lineTo(x+s,y+s);c.moveTo(x-s,y+s);c.lineTo(x+s,y-s);c.stroke()}
+function enableDrag(id,cb){const cv=$(id);let d=false;const mv=e=>{if(!cv._map)return;const r=cv.getBoundingClientRect(),b=6;const [re,im]=cv._map.inv(e.clientX-r.left-b,e.clientY-r.top-b);cb(re,im)};
+  cv.addEventListener('pointerdown',e=>{d=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}mv(e)});cv.addEventListener('pointermove',e=>{if(d)mv(e)});['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,()=>d=false))}
+function setSlider(id,v){const s=$(id);v=Math.max(+s.min,Math.min(+s.max,v));s.value=v;return +s.value}
+
+/* ---------- experiment runner ---------- */
+const EXP={};
+function runExp(key,frame,dur=5000){cancelAnimationFrame(EXP[key]);if(reduced){frame(1);return}const t0=performance.now();const st=now=>{const p=Math.min(1,(now-t0)/dur);frame(p);if(p<1)EXP[key]=requestAnimationFrame(st)};EXP[key]=requestAnimationFrame(st)}
+
+function drawMeter(id,v,vmax,unit){
+  const {ctx,w,h}=setup(id,190),cx=w/2,cy=h-34,r=Math.min(w/2-24,h-58);
+  ctx.lineWidth=2;ctx.strokeStyle=SC.axis;ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,2*Math.PI);ctx.stroke();
+  ctx.font=FONT;ctx.fillStyle=SC.txt;ctx.textAlign='center';
+  for(let i=0;i<=10;i++){const a=Math.PI+i/10*Math.PI,l=i%5?8:14;ctx.strokeStyle=i%5?SC.dim:SC.ink;ctx.lineWidth=i%5?1:1.8;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);ctx.lineTo(cx+Math.cos(a)*(r-l),cy+Math.sin(a)*(r-l));ctx.stroke();if(i%5===0)ctx.fillText(tickTxt(vmax*i/10),cx+Math.cos(a)*(r-28),cy+Math.sin(a)*(r-28)+4)}
+  const q=Math.max(-.03,Math.min(1.05,v/vmax)),a=Math.PI+q*Math.PI;
+  ctx.strokeStyle=SC.y;ctx.lineWidth=3;ctx.shadowColor=SC.y;ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*(r-6),cy+Math.sin(a)*(r-6));ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle=SC.ink;ctx.beginPath();ctx.arc(cx,cy,6,0,7);ctx.fill();
+  ctx.font='600 18px Archivo, sans-serif';ctx.fillText(f2(v)+(unit||''),cx,h-8);
+}
+function niceCeil(v){if(v<=0)return 1;const p=10**Math.floor(Math.log10(v)),m=v/p;return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p}
+
+/* ---------- tabs ---------- */
+const renders={};
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('header ~ .view, .wrap > .view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.tab));
+  (renders[b.dataset.tab]||(()=>{}))();
+}));
+
+/* ====================== T1 ====================== */
+const Ksl=$('K'),asl=$('apole');let t1c=null;
+function resp1(K,a,t){return Math.abs(a)>1e-3?(K/a)*(1-Math.exp(-a*t)):K*t}
+function t1max(a){return a>.05?Math.min(15,5/a):6}
+function renderT1(){
+  const K=+Ksl.value,a=+asl.value;$('K-out').textContent=K.toFixed(1);$('apole-out').textContent=a.toFixed(1);
+  $('tf1').innerHTML=`F(s) = ${f2(K)} / (s ${a>=0?'+':'−'} ${f2(Math.abs(a))}) &nbsp;&nbsp;⇒&nbsp;&nbsp; c(t) = ${Math.abs(a)>1e-3?`(${f2(K)}/${f2(a)})(1 − e<sup>${f2(-a)}t</sup>)`:`${f2(K)}·t`} <small>&nbsp;for a unit step</small>`;
+  drawPlane('pp1',260,[[-a,0]],{r0:-16,r1:4,i1:5});
+  const tm=t1max(a),fin=a>.01?K/a:null,tau=a>.01?1/a:null;
+  const m=timePlot('rp1',260,tm,[{f:t=>resp1(K,a,t),color:SC.c,glow:true,upto:t1c}],{refs:fin?[fin]:[],cursor:t1c});
+  if(fin&&tau<=tm){const v=fin*(1-Math.exp(-1));m.ctx.strokeStyle=SC.m;m.ctx.setLineDash([2,4]);m.ctx.beginPath();m.ctx.moveTo(m.X(tau),m.Y(0));m.ctx.lineTo(m.X(tau),m.Y(v));m.ctx.stroke();m.ctx.setLineDash([]);marker(m,tau,v,SC.m,'t = τ, 63%')}
+  legend($('lg1'),[[SC.c,'c(t)'],[SC.dim,'final value K/a',true],[SC.m,'time constant τ',true]]);
+  const tc=t1c??tm,vNow=resp1(K,a,tc);
+  drawMeter('meter1',t1c==null?0:vNow,niceCeil(fin?fin*1.15:Math.max(1,resp1(K,a,tm))),' V');
+  $('lcd1').innerHTML=`Time <b>${t1c==null?'0.00':f2(t1c)} s</b> of ${f2(tm)} s<br>Output c(t) = <b>${t1c==null?'0':f2(vNow)}</b>`+(fin?`<br>Final value K/a = <b>${f2(fin)}</b>${t1c!=null?` &nbsp;(${Math.round(100*vNow/fin)}% reached)`:''}<br>Time constant τ = 1/a = <b>${f2(tau)} s</b>`:`<br><span style="color:#FF8B80">No final value: the pole is ${a>0?'at':'right of'} the origin.</span>`);
+  const S=$('t1-stable');
+  if(a>.01){S.textContent=`Yes. The pole is at s = −${f2(a)}, in the left half-plane.`;S.className='ok'}
+  else if(Math.abs(a)<=.01){S.textContent='Marginally. The pole is at the origin, so the output ramps forever (a pure integrator).';S.className='warn'}
+  else{S.textContent=`No. The pole is at s = +${f2(-a)}, in the right half-plane, so the output grows without bound.`;S.className='bad'}
+  $('t1-speed').textContent=`Only a. Time constant τ = 1/a${a>.01?' = '+f2(1/a)+' s':''}; larger a means a faster response.`;
+  $('t1-amp').textContent=`Only K, through K/a${a>.01?' = '+f2(K/a):''}. K never changes the speed.`;
+}
+renders.t1=renderT1;
+Ksl.oninput=()=>{t1c=null;renderT1()};asl.oninput=()=>{t1c=null;renderT1()};
+enableDrag('pp1',(re)=>{setSlider('apole',Math.round(-re*10)/10);t1c=null;renderT1()});
+$('run1').onclick=()=>{const tm=t1max(+asl.value);runExp('t1',p=>{t1c=p*tm;renderT1()})};
+
+/* ====================== T2 ====================== */
+const sigDefs={
+  step:{time:'1',lap:'1/s',f:t=>1},
+  ramp:{time:'t',lap:'1/s²',f:t=>t},
+  exp:{time:'e<sup>−t</sup>',lap:'1/(s + 1)',f:t=>Math.exp(-t)},
+  sin:{time:'sin 3t',lap:'3/(s² + 9)',f:t=>Math.sin(3*t)}};
+let t2c=2;
+function renderT2(){
+  const a=+$('lin_a').value,b=+$('lin_b').value;$('lin_a-out').textContent=a.toFixed(1);$('lin_b-out').textContent=b.toFixed(1);
+  const fd=sigDefs[$('fsel').value],gd=sigDefs[$('gsel').value];
+  $('combeq').innerHTML=`h(t) = ${f2(a)}·${fd.time} ${b<0?'−':'+'} ${f2(Math.abs(b))}·${gd.time} &nbsp;&nbsp;⇔&nbsp;&nbsp; H(s) = ${f2(a)}·${fd.lap} ${b<0?'−':'+'} ${f2(Math.abs(b))}·${gd.lap}`;
+  timePlot('rp2',280,5,[{f:t=>a*fd.f(t),color:SC.y,width:1.6,dash:[5,4]},{f:t=>b*gd.f(t),color:SC.m,width:1.6,dash:[5,4]},{f:t=>a*fd.f(t)+b*gd.f(t),color:SC.c,width:2.8,glow:true}],{cursor:t2c});
+  legend($('lg2'),[[SC.y,'a·f(t)',true],[SC.m,'b·g(t)',true],[SC.c,'h(t)']]);
+  const af=a*fd.f(t2c),bg=b*gd.f(t2c);
+  $('lcd2').innerHTML=`At t = <b>${f2(t2c)} s</b>: &nbsp; a·f = <b style="color:#F5C518">${f2(af)}</b> &nbsp; + &nbsp; b·g = <b style="color:#EE5BA6">${f2(bg)}</b> &nbsp; = &nbsp; h = <b style="color:#2BC4EE">${f2(af+bg)}</b>`;
+}
+renders.t2=renderT2;
+['fsel','gsel'].forEach(i=>$(i).onchange=renderT2);['lin_a','lin_b'].forEach(i=>$(i).oninput=renderT2);
+(()=>{const cv=$('rp2');const mv=e=>{const m=cv._t;if(!m)return;const r=cv.getBoundingClientRect(),x=e.clientX-r.left-6;t2c=Math.max(0,Math.min(5,(x-m.L)/(m.w-m.L-m.R)*5));renderT2()};cv.addEventListener('pointermove',mv);cv.addEventListener('pointerdown',mv);cv.style.touchAction='none'})();
+
+/* ====================== T3 ====================== */
+let t3c=null;
+function step2(t,z,wn){
+  if(Math.abs(z-1)<1e-6)return 1-Math.exp(-wn*t)*(1+wn*t);
+  if(z>-1&&z<1){const wd=wn*Math.sqrt(1-z*z);return 1-Math.exp(-z*wn*t)*(Math.cos(wd*t)+z/Math.sqrt(1-z*z)*Math.sin(wd*t))}
+  const om=wn*Math.sqrt(z*z-1);return 1-Math.exp(-z*wn*t)*(Math.cosh(om*t)+(z*wn/om)*Math.sinh(om*t));
+}
+function t3max(z,wn){return z>.02?Math.min(20,Math.max(8/(z*wn),2*Math.PI/wn*2.5)):Math.min(20,25/wn)}
+function poles2(z,wn){const s=-z*wn;if(z>-1&&z<1){const wd=wn*Math.sqrt(1-z*z);return [[s,wd],[s,-wd]]}if(Math.abs(z-1)<1e-6)return [[-wn,0],[-wn,0]];const om=wn*Math.sqrt(z*z-1);return [[s+om,0],[s-om,0]]}
+function renderT3(){
+  const z=+$('zeta').value,wn=+$('wn').value;$('zeta-out').textContent=z.toFixed(2);$('wn-out').textContent=wn.toFixed(1);
+  $('tf3').innerHTML=`H(s) = ${f2(wn*wn)} / (s² ${z<0?'−':'+'} ${f2(Math.abs(2*z*wn))}s + ${f2(wn*wn)})`;
+  drawPlane('pp3',280,poles2(z,wn),{r0:-12,r1:3,i1:9});
+  const tm=t3max(z,wn),stable=z>.005;
+  const m=timePlot('rp3',280,tm,[{f:t=>step2(t,z,wn),color:SC.c,glow:true,upto:t3c}],{refs:[1],band:stable?[.98,1.02]:null,cursor:t3c});
+  if(z>0&&z<1){const tp=Math.PI/(wn*Math.sqrt(1-z*z));if(tp<=tm)marker(m,tp,step2(tp,z,wn),SC.m,`peak +${(100*Math.exp(-z*Math.PI/Math.sqrt(1-z*z))).toFixed(1)}%`)}
+  legend($('lg3'),[[SC.c,'c(t)'],[SC.dim,'final value',true],['rgba(63,208,138,.8)','±2% band']]);
+  const tc=t3c,x=tc==null?0:step2(tc,z,wn);
+  drawMass('mass3',x);
+  $('lcd3').innerHTML=`Time <b>${tc==null?'0.00':f2(tc)} s</b><br>Displacement x(t) = <b>${f2(x)}</b> &nbsp;(new rest point = 1)<br>Poles: s = <b>${f2(-z*wn)} ${z<1&&z>-1?'± j'+f2(wn*Math.sqrt(1-z*z)):''}</b>`;
+  const S=$('t3-stable'),sig=-z*wn;
+  if(sig<-.01){S.textContent='Yes. Both poles are in the left half-plane.';S.className='ok'}
+  else if(Math.abs(sig)<=.01){S.textContent='Marginally. The poles sit on the jω-axis, so it oscillates forever.';S.className='warn'}
+  else{S.textContent='No. The poles are in the right half-plane, so the swings grow.';S.className='bad'}
+  const ts=z>.02?4/(z*wn):NaN;
+  $('t3-speed').textContent=!isFinite(ts)?'It never settles.':`About 4/(ζωₙ) = ${f2(ts)} s to stay within 2% of the final value.`;
+  $('t3-osc').textContent=z<1?`Yes, underdamped: it rings at ω_d = ωₙ√(1 − ζ²) = ${f2(wn*Math.sqrt(Math.max(0,1-z*z)))} rad/s.`:'No. It approaches the final value smoothly.';
+  $('t3-overshoot').textContent=z<=0?'Unbounded or sustained.':z<1?`${(100*Math.exp(-z*Math.PI/Math.sqrt(1-z*z))).toFixed(1)}% above the final value.`:'None.';
+  $('t3-improve').textContent=sig>=-.01?'Add damping immediately: the system does not settle.':z<.5?'Increase the damping ratio to cut the ringing.':z>1.3?'Reduce damping or raise ωₙ to speed it up.':'Already a good balance of speed and overshoot.';
+}
+function drawMass(id,x){
+  const {ctx,w,h}=setup(id,300),cx=w/2,top=18,y0=70,sc=100,xc=Math.max(-.7,Math.min(1.9,x)),my=y0+xc*sc,mw=Math.min(150,w*.5),mh=40;
+  ctx.fillStyle='#3A454C';ctx.fillRect(cx-mw/2-40,top-12,mw+80,12);
+  ctx.strokeStyle=SC.dim;ctx.lineWidth=1;for(let i=0;i<14;i++){const x0=cx-mw/2-40+i*((mw+80)/14);ctx.beginPath();ctx.moveTo(x0,top-12);ctx.lineTo(x0+8,top-20);ctx.stroke()}
+  ctx.setLineDash([4,5]);ctx.strokeStyle=SC.dim;[[y0,'start'],[y0+sc,'new rest point']].forEach(([y,t])=>{ctx.beginPath();ctx.moveTo(14,y+mh/2);ctx.lineTo(w-14,y+mh/2);ctx.stroke();ctx.font=FONT;ctx.fillStyle=SC.txt;ctx.textAlign='left';ctx.fillText(t,16,y+mh/2-5)});ctx.setLineDash([]);
+  const sx=cx-mw/4,coils=9,len=my-top;ctx.strokeStyle=SC.y;ctx.lineWidth=2.2;ctx.shadowColor=SC.y;ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(sx,top);ctx.lineTo(sx,top+8);
+  for(let i=0;i<=coils*2;i++){const yy=top+8+(len-16)*i/(coils*2);ctx.lineTo(sx+(i%2?12:-12)*(i===0||i===coils*2?0:1),yy)}ctx.lineTo(sx,my);ctx.stroke();ctx.shadowBlur=0;
+  const dx=cx+mw/4,cylTop=top,cylH=60;ctx.strokeStyle=SC.m;ctx.lineWidth=2;ctx.strokeRect(dx-11,cylTop,22,cylH);ctx.beginPath();ctx.moveTo(dx,my);ctx.lineTo(dx,Math.max(cylTop+10,Math.min(cylTop+cylH-4,my-40)));ctx.stroke();
+  const py=Math.max(cylTop+10,Math.min(cylTop+cylH-4,my-40));ctx.beginPath();ctx.moveTo(dx-9,py);ctx.lineTo(dx+9,py);ctx.stroke();
+  const g=ctx.createLinearGradient(0,my,0,my+mh);g.addColorStop(0,'#D2D8DC');g.addColorStop(1,'#8E989F');ctx.fillStyle=g;ctx.fillRect(cx-mw/2,my,mw,mh);ctx.strokeStyle='#1A1F24';ctx.lineWidth=1;ctx.strokeRect(cx-mw/2,my,mw,mh);
+  ctx.fillStyle='#1B2025';ctx.font='600 15px Archivo, sans-serif';ctx.textAlign='center';ctx.fillText('m',cx,my+mh/2+5);
+  ctx.strokeStyle=SC.c;ctx.fillStyle=SC.c;ctx.lineWidth=2;const ay=my+mh+8;ctx.beginPath();ctx.moveTo(cx,ay);ctx.lineTo(cx,ay+26);ctx.stroke();ctx.beginPath();ctx.moveTo(cx-6,ay+20);ctx.lineTo(cx,ay+28);ctx.lineTo(cx+6,ay+20);ctx.fill();
+  ctx.font=FONT;ctx.textAlign='left';ctx.fillText('step force',cx+10,ay+20);
+  ctx.fillStyle=SC.txt;ctx.textAlign='left';ctx.fillText('spring k',sx-60,top+30);ctx.textAlign='left';ctx.fillText('damper c',dx+16,top+30);
+}
+renders.t3=renderT3;
+['zeta','wn'].forEach(i=>$(i).oninput=()=>{t3c=null;renderT3()});
+document.querySelectorAll('#t3 .chip').forEach(c=>c.onclick=()=>{setSlider('zeta',+c.dataset.z);setSlider('wn',+c.dataset.w);t3c=null;renderT3()});
+enableDrag('pp3',(re,im)=>{im=Math.abs(im);let wn,z;if(im<.25){wn=Math.abs(re);z=re<0?1:-.3}else{wn=Math.hypot(re,im);z=-re/wn}
+  setSlider('wn',Math.round(wn*10)/10);setSlider('zeta',Math.round(z*50)/50);t3c=null;renderT3()});
+$('run3').onclick=()=>{const z=+$('zeta').value,wn=+$('wn').value,tm=t3max(z,wn);runExp('t3',p=>{t3c=p*tm;renderT3()},6000)};
+
+/* ====================== T4 ====================== */
+let trails=[];
+function step1(a,t){return Math.abs(a)>1e-3?(1/a)*(1-Math.exp(-a*t)):t}
+function renderT4(){
+  const a=+$('poleAnim').value;$('poleAnim-out').textContent=a.toFixed(1);
+  drawPlane('pp4',260,[[-a,0]],{r0:-16,r1:5,i1:4},{traces:trails.map(b=>[-b,0])});
+  const series=trails.map(b=>({f:t=>step1(b,t),color:SC.y,width:1.2,alpha:.25}));series.push({f:t=>step1(a,t),color:SC.c,glow:true});
+  timePlot('rp4',260,5,series,{y:[-0.4,5.4]});
+  let live;
+  if(a>8)live=`Pole far left at s = −${f2(a)}: very fast, settles almost immediately (τ = ${f2(1/a)} s).`;
+  else if(a>.5)live=`Pole at s = −${f2(a)}: stable, moderate speed (τ = ${f2(1/a)} s).`;
+  else if(a>.01)live=`Pole close to the origin at s = −${f2(a)}: stable but slow (τ = ${f2(1/a)} s).`;
+  else if(a>-.01)live='Pole at the origin: the output ramps instead of settling.';
+  else live=`Pole at s = +${f2(-a)}, right half-plane: unstable, the output grows without bound.`;
+  $('t4-live').innerHTML='<b>Now:</b> '+live;
+}
+renders.t4=renderT4;
+let anim4=null;
+function addTrail(a){if(!trails.length||Math.abs(trails[trails.length-1]-a)>.9){trails.push(a);if(trails.length>14)trails.shift()}}
+$('poleAnim').oninput=()=>{cancelAnimationFrame(anim4);$('animBtn').textContent='Sweep from −4 to 15';addTrail(+$('poleAnim').value);renderT4()};
+$('clr4').onclick=()=>{trails=[];renderT4()};
+enableDrag('pp4',re=>{const a=setSlider('poleAnim',Math.round(-re*10)/10);addTrail(a);renderT4()});
+$('animBtn').onclick=()=>{trails=[];const t0=performance.now();cancelAnimationFrame(anim4);const st=now=>{const p=Math.min(1,(now-t0)/6000),a=-4+19*p;setSlider('poleAnim',a);addTrail(a);renderT4();if(p<1)anim4=requestAnimationFrame(st)};anim4=requestAnimationFrame(st)};
+
+/* ====================== T5 ====================== */
+let sA=2,t5c=null;
+const SENS={0.2:'A bulky temperature probe has a large thermal mass, like a large RC. Fine for slowly changing quantities such as room temperature; useless for fast transients.',2:'A typical RC-coupled temperature or light sensor: reasonable speed with simple, low-noise electronics. A common default in instrumentation.',8:'A photodiode has a tiny time constant, so it tracks rapid changes, at the cost of needing more amplifier bandwidth and usually more noise.'};
+function renderT5(){
+  $('tf5').innerHTML=`F(s) = ${f2(sA)} / (s + ${f2(sA)}) <small>&nbsp; (scaled so it reads 1 when settled)</small>`;
+  drawPlane('pp5',240,[[-sA,0]],{r0:-10,r1:2,i1:3});
+  const tm=Math.max(5/sA,1),tau=1/sA;
+  const m=timePlot('rp5',240,tm,[{f:t=>1-Math.exp(-sA*t),color:SC.c,glow:true,upto:t5c}],{refs:[1],band:[.98,1.02],cursor:t5c});
+  marker(m,tau,1-Math.exp(-1),SC.m,'63% at τ');if(4*tau<=tm)marker(m,4*tau,1-Math.exp(-4),SC.g,'98% at 4τ');
+  $('t5-tau').textContent=f2(tau)+' s';$('t5-63').textContent=f2(tau)+' s';$('t5-settle').textContent=f2(4*tau)+' s';
+  $('t5-extc').innerHTML='<b>In practice:</b> '+SENS[sA];
+}
+renders.t5=renderT5;
+document.querySelectorAll('.sensor-btn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.sensor-btn').forEach(x=>x.setAttribute('aria-pressed',x===b));sA=+b.dataset.a;t5c=null;renderT5()});
+$('run5').onclick=()=>{const tm=Math.max(5/sA,1);runExp('t5',p=>{t5c=p*tm;renderT5()},4000)};
+
+/* ====================== T6a f(t) → F(s) ====================== */
+function coef(s){if(s===''||s===undefined)return 1;if(s==='-')return -1;if(s==='+')return 1;return parseFloat(s)}
+function sMinus(a){return Math.abs(a)<5e-7?'s':a>=0?('s − '+f3(a)):('s + '+f3(-a))}
+function par(x){return x==='s'?'s':'('+x+')'}
+const CN='([+-]?\\d*\\.?\\d*)\\*?',TC='([+-]?\\d*\\.?\\d*)\\*?t';
+function cstr(c){return c===1?'':c===-1?'−':f3(c)+'·'}
+function parseTerm(term){
+  term=term.trim();let m;
+  m=term.match(new RegExp('^'+CN+'exp\\('+TC+'\\)\\*(sin|cos)\\('+TC+'\\)$'));
+  if(m){const c=coef(m[1]),a=coef(m[2]),fn=m[3],w=coef(m[4]);return fn==='sin'?{type:'exp_sin',c,a,w,lap:`${cstr(c)}${f3(w)} / ((${sMinus(a)})² + ${f3(w*w)})`,rule:'L{e^(at) sin ωt} = ω/((s − a)² + ω²)'}:{type:'exp_cos',c,a,w,lap:`${cstr(c)}(${sMinus(a)}) / ((${sMinus(a)})² + ${f3(w*w)})`,rule:'L{e^(at) cos ωt} = (s − a)/((s − a)² + ω²)'}}
+  m=term.match(new RegExp('^'+CN+'exp\\('+TC+'\\)$'));
+  if(m){const c=coef(m[1]),a=coef(m[2]);return {type:'exp',c,a,lap:`${cstr(c).replace(/·$/,'')||'1'} / (${sMinus(a)})`.replace(/^−\s\//,'−1 /'),rule:'L{e^(at)} = 1/(s − a)'}}
+  m=term.match(new RegExp('^'+CN+'(sin|cos)\\('+TC+'\\)$'));
+  if(m){const c=coef(m[1]),fn=m[2],w=coef(m[3]);return fn==='sin'?{type:'sin',c,w,lap:`${cstr(c)}${f3(w)} / (s² + ${f3(w*w)})`,rule:'L{sin ωt} = ω/(s² + ω²)'}:{type:'cos',c,w,lap:`${cstr(c)}s / (s² + ${f3(w*w)})`,rule:'L{cos ωt} = s/(s² + ω²)'}}
+  m=term.match(new RegExp('^'+CN+'t\\^(\\d+)$'));
+  if(m){const c=coef(m[1]),n=parseInt(m[2]);let fa=1;for(let i=2;i<=n;i++)fa*=i;return {type:'tn',c,n,lap:`${f3(c*fa)} / s<sup>${n+1}</sup>`,rule:'L{tⁿ} = n!/sⁿ⁺¹'}}
+  m=term.match(new RegExp('^'+CN+'t$'));
+  if(m){const c=coef(m[1]);return {type:'t',c,lap:`${f3(c)} / s²`,rule:'L{t} = 1/s²'}}
+  m=term.match(/^([+-]?[\d.]+)$/);
+  if(m){const c=parseFloat(m[1]);return {type:'const',c,lap:`${f3(c)} / s`,rule:'L{1} = 1/s'}}
+  return {type:'unknown',raw:term};
+}
+function splitTerms(e){e=e.replace(/\s+/g,'');const out=[];let cur='',d=0;for(let i=0;i<e.length;i++){const ch=e[i];if(ch==='(')d++;if(ch===')')d--;if((ch==='+'||ch==='-')&&d===0&&i>0&&e[i-1]!=='*'&&e[i-1]!=='('){out.push(cur);cur=ch}else cur+=ch}out.push(cur);return out.filter(t=>t.length&&t!=='+')}
+function jsEval(expr){let js=expr.replace(/\^/g,'**').replace(/exp/g,'Math.exp').replace(/sin/g,'Math.sin').replace(/cos/g,'Math.cos').replace(/(^|[(,])\s*-/g,'$10-');try{const f=new Function('t','return '+js+';');f(1);return f}catch(e){return null}}
+function renderFt(){
+  const expr=$('ftInput').value,terms=splitTerms(expr),parsed=terms.map(parseTerm);
+  $('ftTerms').innerHTML=parsed.map((p,i)=>p.type==='unknown'?`<li><span class="why">Not a standard form: plotted below but left out of F(s).</span>${terms[i]}</li>`:`<li><span class="why">${p.rule}</span>${terms[i].replace(/\*/g,'·')} &nbsp;→&nbsp; ${p.lap}</li>`).join('');
+  const known=parsed.filter(p=>p.type!=='unknown');
+  $('ftCombined').innerHTML=known.length?'F(s) = '+known.map(p=>p.lap).join(' + ').replace(/\+ −/g,'− '):'No standard terms recognised yet.';
+  const fn=jsEval(expr);
+  if(fn)timePlot('ftPlot',240,5,[{f:t=>{try{return fn(t)}catch(e){return NaN}},color:SC.c,glow:true}]);else setup('ftPlot',240);
+  const grow=known.some(p=>/exp/.test(p.type)&&p.a>0),osc=known.some(p=>/sin|cos/.test(p.type)),ex=known.some(p=>/exp/.test(p.type));
+  $('ftInterp').innerHTML='<b>Reading the shape:</b> '+(!fn?'the expression could not be evaluated; check the * signs and brackets.':grow?'a growing exponential: it would correspond to a right-half-plane pole, an unstable system.':osc&&ex?'decay and oscillation together: a damped sinusoid, like a lightly damped RLC circuit ringing down.':osc?'pure oscillation with no decay: poles exactly on the jω-axis, an ideal oscillator.':ex?'pure exponential decay: first-order behaviour, like an RC circuit discharging.':'polynomial or constant terms: standard step and ramp test inputs.');
+}
+$('ftInput').addEventListener('input',renderFt);
+document.querySelectorAll('.ftex').forEach(c=>c.onclick=()=>{$('ftInput').value=c.textContent;renderFt()});
+
+/* ====================== T6b F(s) → f(t) ====================== */
+function sm(v){return v<0?`− ${f3(-v)}`:`+ ${f3(v)}`}
+function invQuad(b1,b0,p,q){
+  const disc=p*p-4*q,steps=[];
+  steps.push(`<span class="why">Find the poles: solve the denominator s² + p s + q = 0. Discriminant p² − 4q:</span>Δ = ${f3(p)}² − 4·${f3(q)} = ${f3(disc)} &nbsp;⇒&nbsp; ${disc>1e-9?'two real poles':Math.abs(disc)<=1e-9?'one repeated pole':'a complex pair'}`);
+  if(disc>1e-9){const r1=(-p+Math.sqrt(disc))/2,r2=(-p-Math.sqrt(disc))/2,A=(b1*r1+b0)/(r1-r2),B=(b1*r2+b0)/(r2-r1);
+    steps.push(`<span class="why">Poles from the quadratic formula:</span>s₁ = ${f3(r1)}, &nbsp; s₂ = ${f3(r2)}`);
+    steps.push(`<span class="why">Partial fractions, with A = N(s₁)/(s₁ − s₂) and B = N(s₂)/(s₂ − s₁):</span>F(s) = ${f3(A)}/(${sMinus(r1)}) ${sm(B)}/(${sMinus(r2)})`);
+    steps.push(`<span class="why">Invert each term with L⁻¹{1/(s − a)} = e<sup>at</sup>:</span>f(t) = ${f3(A)}e<sup>${f3(r1)}t</sup> ${sm(B)}e<sup>${f3(r2)}t</sup>`);
+    return {roots:[[r1,0],[r2,0]],f:t=>A*Math.exp(r1*t)+B*Math.exp(r2*t),steps,type:'real'}}
+  if(Math.abs(disc)<=1e-9){const r=-p/2,A=b1,B=b0+b1*r;
+    steps.push(`<span class="why">Repeated pole:</span>s = ${f3(r)} (twice), so the denominator is (${sMinus(r)})²`);
+    steps.push(`<span class="why">Write the numerator around the pole, b₁s + b₀ = b₁(s − r) + (b₀ + b₁r):</span>F(s) = ${f3(A)}/(${sMinus(r)}) ${sm(B)}/(${sMinus(r)})²`);
+    steps.push(`<span class="why">Invert with L⁻¹{1/(s − a)²} = t·e<sup>at</sup>:</span>f(t) = ${f3(A)}e<sup>${f3(r)}t</sup> ${sm(B)}·t·e<sup>${f3(r)}t</sup>`);
+    return {roots:[[r,0],[r,0]],f:t=>(A+B*t)*Math.exp(r*t),steps,type:'rep'}}
+  const sg=-p/2,om=Math.sqrt(4*q-p*p)/2,C=b1,D=(b0+b1*sg)/om;
+  steps.push(`<span class="why">Complete the square: s² + p s + q = (s − σ)² + ω² with σ = −p/2 and ω = √(q − p²/4):</span>(${sMinus(sg)})² + ${f3(om)}² &nbsp;⇒&nbsp; poles s = ${f3(sg)} ± j${f3(om)}`);
+  const den2=`(${par(sMinus(sg)).replace(/^\(|\)$/g,'')==='s'?'s':par(sMinus(sg))}² + ${f3(om*om)})`;
+  const pf=[],pt=[];if(Math.abs(C)>5e-7){pf.push([C,`${par(sMinus(sg))}/${den2}`]);pt.push([C,`cos ${f3(om)}t`])}if(Math.abs(D)>5e-7){pf.push([D,`${f3(om)}/${den2}`]);pt.push([D,`sin ${f3(om)}t`])}
+  const jn=a=>a.map(([c,b],i)=>(i?(c<0?' − ':' + '):(c<0?'−':''))+f3(Math.abs(c))+'·'+b).join('')||'0';
+  steps.push(`<span class="why">Split the numerator into a cosine part and a sine part:</span>F(s) = ${jn(pf)}`);
+  steps.push(`<span class="why">Invert with the shifting theorem, L⁻¹{(s − a)/((s − a)² + ω²)} = e<sup>at</sup>cos ωt and L⁻¹{ω/((s − a)² + ω²)} = e<sup>at</sup>sin ωt:</span>f(t) = ${Math.abs(sg)>5e-7?`e<sup>${f3(sg)}t</sup>`:''}[ ${jn(pt).replace(/·/g,' ')} ]`);
+  return {roots:[[sg,om],[sg,-om]],f:t=>Math.exp(sg*t)*(C*Math.cos(om*t)+D*Math.sin(om*t)),steps,type:'cx'};
+}
+function renderFs(){
+  const b1=+$('Fb1').value||0,b0=+$('Fb0').value||0,p=+$('Fp').value||0,q=+$('Fq').value||0;
+  const num=b1===0?f3(b0):`${f3(b1)}s${b0?' '+sm(b0):''}`,den=`s²${p?' '+sm(p)+'s':''}${q?' '+sm(q):''}`;$('FsDisplay').innerHTML=`F(s) = ${b1===0?num:'('+num+')'} / (${den})`;
+  const r=invQuad(b1,b0,p,q);$('FsSteps').innerHTML=r.steps.map(s=>`<li>${s}</li>`).join('');
+  const mr=Math.max(3,...r.roots.map(x=>Math.abs(x[0])*1.4)),mi=Math.max(3,...r.roots.map(x=>Math.abs(x[1])*1.4));
+  drawPlane('FsPolePlot',260,r.roots,{r0:-mr,r1:Math.max(mr*.35,1),i1:mi});
+  const mre=Math.max(...r.roots.map(x=>Math.abs(x[0])),.5);timePlot('FsRespPlot',260,Math.min(20,6/mre),[{f:r.f,color:SC.c,glow:true}]);
+  const mx=Math.max(...r.roots.map(x=>x[0])),S=$('Fs-stable');
+  if(mx<-.01){S.textContent='Yes: every pole has a negative real part.';S.className='ok'}else if(Math.abs(mx)<=.01){S.textContent='Marginal: a pole lies on the jω-axis.';S.className='warn'}else{S.textContent='No: a pole has a positive real part.';S.className='bad'}
+  $('Fs-osc').textContent=r.type==='cx'?'Yes: complex poles give a sinusoidal part.':'No: real poles give pure exponentials.';
+}
+['Fb1','Fb0','Fp','Fq'].forEach(i=>$(i).addEventListener('input',renderFs));
+enableDrag('FsPolePlot',(re,im)=>{im=Math.abs(im);if(im<.15)im=0;$('Fp').value=f3(-2*re).replace('−','-');$('Fq').value=f3(re*re+im*im).replace('−','-');renderFs()});
+document.querySelectorAll('.subtab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.subtab').forEach(x=>x.setAttribute('aria-pressed',x===b));['s6a','s6b'].forEach(s=>$(s).classList.toggle('active',s===b.dataset.sub));renders.t6()});
+renders.t6=()=>{renderFt();renderFs()};
+
+/* ====================== T7 ODE ====================== */
+const C={add:(a,b)=>[a[0]+b[0],a[1]+b[1]],mul:(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],div:(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return [(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d]}};
+function cpoly(cs,z){let r=[0,0];for(const c of cs)r=C.add(C.mul(r,z),[c,0]);return r}
+function rpoly(cs,x){let r=0;for(const c of cs)r=r*x+c;return r}
+function renderODE(){
+  const a=+$('oa').value||0,b=+$('ob').value||0,K=+$('oK').value||0,y0=+$('oy0').value||0,y1=+$('oy1').value||0;
+  $('odeErr').textContent='';
+  $('odeEq').innerHTML=`y″ ${sm(a)}y′ ${sm(b)}y = ${f3(K)}, &nbsp;&nbsp; y(0) = ${f3(y0)}, &nbsp; y′(0) = ${f3(y1)}`;
+  const st=K!==0;
+  const N=st?[y0,a*y0+y1,K]:[y0,a*y0+y1];
+  const Dq=[1,a,b],D=st?[1,a,b,0]:[1,a,b],Dp=st?[3,2*a,b]:[2,a];
+  const disc=a*a-4*b;let qr;
+  if(disc>1e-9)qr=[[(-a+Math.sqrt(disc))/2,0],[(-a-Math.sqrt(disc))/2,0]];else if(Math.abs(disc)<=1e-9)qr=[[-a/2,0],[-a/2,0]];else qr=[[-a/2,Math.sqrt(-disc)/2],[-a/2,-Math.sqrt(-disc)/2]];
+  const poles=st?[[0,0],...qr]:qr;
+  // group poles
+  const groups=[];poles.forEach(p=>{const g=groups.find(g=>Math.hypot(g.p[0]-p[0],g.p[1]-p[1])<1e-6);g?g.m++:groups.push({p,m:1})});
+  const terms=[],fnParts=[];
+  groups.forEach(g=>{
+    const [re,im]=g.p;
+    if(im<-1e-9)return;
+    if(im>1e-9){const R=C.div(cpoly(N,g.p),cpoly(Dp,g.p)),A=2*R[0],B=-2*R[1];
+      terms.push({pole:`${f3(re)} ± j${f3(im)}`,frac:`(${f3(R[0])} ${R[1]<0?'−':'+'} j${f3(Math.abs(R[1]))}) / (s − (${f3(re)} + j${f3(im)})) + conjugate`,time:`e<sup>${f3(re)}t</sup>[ ${f3(A)} cos ${f3(im)}t ${sm(B)} sin ${f3(im)}t ]`});
+      fnParts.push(t=>Math.exp(re*t)*(A*Math.cos(im*t)+B*Math.sin(im*t)));return}
+    const others=groups.filter(o=>o!==g&&o.p[1]>=-1e-9).flatMap(o=>o.p[1]>1e-9?[o.p,[o.p[0],-o.p[1]]]:Array(o.m).fill(o.p));
+    const G=x=>{let d=1;others.forEach(o=>{d=o[1]?d:d*(x-o[0])});const cx=others.filter(o=>o[1]);if(cx.length){d*= (x-cx[0][0])**2+cx[0][1]**2}return rpoly(N,x)/d};
+    if(g.m===1){const R=rpoly(N,re)/rpoly(Dp,re);terms.push({pole:f3(re),frac:`${f3(R)}/${par(sMinus(re))}`,time:`${f3(R)}${Math.abs(re)<1e-9?'':`e<sup>${f3(re)}t</sup>`}`});fnParts.push(t=>R*Math.exp(re*t));return}
+    const hh=1e-4;let cs=[];
+    if(g.m===2){const A2=G(re),A1=(G(re+hh)-G(re-hh))/(2*hh);cs=[A1,A2];
+      terms.push({pole:`${f3(re)} (twice)`,frac:`${f3(A1)}/${par(sMinus(re))} ${sm(A2)}/${par(sMinus(re))}²`,time:`(${f3(A1)} ${sm(A2)}t)${Math.abs(re)<1e-9?'':`e<sup>${f3(re)}t</sup>`}`});fnParts.push(t=>(A1+A2*t)*Math.exp(re*t))}
+    else{const A3=G(re),A2=(G(re+hh)-G(re-hh))/(2*hh),A1=(G(re+hh)-2*G(re)+G(re-hh))/(2*hh*hh);
+      terms.push({pole:`${f3(re)} (three times)`,frac:`${f3(A1)}/(${sMinus(re)}) ${sm(A2)}/(${sMinus(re)})² ${sm(A3)}/(${sMinus(re)})³`,time:`(${f3(A1)} ${sm(A2)}t ${sm(A3)}t²/2)e<sup>${f3(re)}t</sup>`});fnParts.push(t=>(A1+A2*t+A3*t*t/2)*Math.exp(re*t))}
+  });
+  const y=t=>fnParts.reduce((s,f)=>s+f(t),0);
+  const polyTxt=(cs)=>{const deg=cs.length-1;let out=[];cs.forEach((c,i)=>{if(Math.abs(c)<1e-12)return;const pw=deg-i,v=pw===0?f3(Math.abs(c)):(Math.abs(c)===1?'':f3(Math.abs(c)))+(pw===1?'s':`s<sup>${pw}</sup>`);out.push((c<0?'− ':'+ ')+v)});return (out.join(' ')||'0').replace(/^\+ /,'').replace(/^− /,'−')};
+  const steps=[
+    `<span class="why">Take the Laplace transform of every term, using L{y′} = sY − y(0) and L{y″} = s²Y − s·y(0) − y′(0)${st?' and L{K} = K/s':''}:</span>(s²Y${y0?' '+sm(-y0)+'s':''}${y1?' '+sm(-y1):''})${a?` ${sm(a)}(sY${y0?' '+sm(-y0):''})`:''}${b?` ${sm(b)}Y`:''} = ${st?f3(K)+'/s':'0'}`,
+    `<span class="why">Collect the Y terms on one side. The ODE has become algebra:</span>(s²${a?' '+sm(a)+'s':''}${b?' '+sm(b):''}) Y = ${[y0,a*y0+y1].some(v=>Math.abs(v)>1e-12)?polyTxt([y0,a*y0+y1])+(st?` ${sm(K)}/s`:''):(st?f3(K)+'/s':'0')}`,
+    `<span class="why">Solve for Y(s):</span>Y(s) = ${N.filter(v=>Math.abs(v)>1e-12).length>1?'('+polyTxt(N)+')':polyTxt(N)} / (${polyTxt(D)})`,
+    `<span class="why">Find the poles${st?' (s = 0 comes from the step input)':''} from s² ${sm(a)}s ${sm(b)} = 0, discriminant a² − 4b = ${f3(disc)}:</span>`+groups.filter(g=>g.p[1]>=-1e-9).map(g=>g.p[1]>1e-9?`s = ${f3(g.p[0])} ± j${f3(g.p[1])}`:`s = ${f3(g.p[0])}${g.m>1?' (×'+g.m+')':''}`).join(', &nbsp; '),
+    `<span class="why">Partial fractions (residues):</span>Y(s) = `+terms.map(t=>t.frac).join(' &nbsp;+&nbsp; ').replace(/\+&nbsp; −/g,'−&nbsp; '),
+    `<span class="why">Invert each term from the table:</span>y(t) = `+terms.map(t=>t.time).join(' + ').replace(/\+ −/g,'− ')
+  ];
+  $('odeSteps').innerHTML=steps.map(s=>`<li>${s}</li>`).join('');
+  // RK4 check
+  const maxRe=Math.max(...poles.filter(p=>Math.abs(p[0])>1e-6||p[1]).map(p=>p[0]),-Infinity);
+  const minDecay=Math.min(...poles.filter(p=>p[0]<-1e-6).map(p=>-p[0]),Infinity);
+  let tm=maxRe>1e-6?Math.min(12,4/maxRe+2):isFinite(minDecay)?Math.min(20,6/minDecay):10;
+  const qv=qr.filter(p=>p[1]>0);if(qv.length)tm=Math.max(tm,Math.min(20,4*2*Math.PI/qv[0][1]));tm=Math.min(tm,20);
+  let Y0=y0,V=y1;const dt=tm/4000,dots=[];const fr=(yy,vv)=>K-a*vv-b*yy;
+  for(let i=0;i<=4000;i++){if(i%160===0)dots.push([i*dt,Y0]);const k1y=V,k1v=fr(Y0,V),k2y=V+dt/2*k1v,k2v=fr(Y0+dt/2*k1y,V+dt/2*k1v),k3y=V+dt/2*k2v,k3v=fr(Y0+dt/2*k2y,V+dt/2*k2v),k4y=V+dt*k3v,k4v=fr(Y0+dt*k3y,V+dt*k3v);Y0+=dt/6*(k1y+2*k2y+2*k3y+k4y);V+=dt/6*(k1v+2*k2v+2*k3v+k4v)}
+  const fin=st&&b!==0&&maxRe<-1e-6?K/b:null;
+  timePlot('odePlot',280,tm,[{f:y,color:SC.c,glow:true},{dots,color:SC.y}],{refs:fin!=null?[fin]:[]});
+  legend($('lg7'),[[SC.c,'Laplace solution'],[SC.y,'numerical simulation (RK4)',true]].concat(fin!=null?[[SC.dim,'final value K/b',true]]:[]));
+  const mr=Math.max(3,...poles.map(p=>Math.abs(p[0])*1.4)),mi=Math.max(3,...poles.map(p=>Math.abs(p[1])*1.4));
+  drawPlane('odePoles',280,poles,{r0:-mr,r1:Math.max(1,mr*.35),i1:mi});
+  let err=0;dots.forEach(([t,v])=>{err=Math.max(err,Math.abs(v-y(t)))});
+  const h=1e-5,yp0=(y(h)-y(0))/h;
+  $('odeCheck').innerHTML=`Check: y(0) = <b>${f3(y(0))}</b> (should be ${f3(y0)}), &nbsp; y′(0) ≈ <b>${f3(yp0)}</b> (should be ${f3(y1)})<br>Largest gap between the Laplace answer and the numerical simulation: <b>${err<1e-3?'< 0.001':f3(err)}</b>${err<1e-2?' &nbsp;✓ they agree':''}`+(fin!=null?`<br>Final value theorem: y(∞) = lim s·Y(s) as s → 0 = K/b = <b>${f3(fin)}</b>`:maxRe>1e-6?'<br>A pole in the right half-plane: the solution grows without bound.':'');
+}
+['oa','ob','oK','oy0','oy1'].forEach(i=>$(i).addEventListener('input',renderODE));
+document.querySelectorAll('.ode').forEach(c=>c.onclick=()=>{const v=c.dataset.v.split(',');['oa','ob','oK','oy0','oy1'].forEach((id,i)=>$(id).value=v[i]);renderODE()});
+renders.t7=renderODE;
+
+/* ---------- boot ---------- */
+function renderActive(){const a=document.querySelector('.tabs button[aria-selected="true"]');(renders[a.dataset.tab]||(()=>{}))()}
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(renderActive,120)});
+renderActive();
+})();
+</script>
+<a href="../index.html" style="position:fixed;left:14px;bottom:14px;z-index:99999;font:600 13px system-ui,sans-serif;background:rgba(10,14,22,.88);color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer">&larr; Mathematics Lab</a>
+</body>
+</html>

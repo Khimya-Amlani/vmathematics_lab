@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orthogonal Trajectories: A Chalkboard Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9edf0; --panel:#ffffff; --ink:#1b2430; --muted:#5b6673; --line:#d3dae0;
+  --soft:#eef4f1; --accent:#1f5a47; --accent-ink:#ffffff; --eq:#1f6fbf; --field:#c4541d;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12161a; --panel:#1b2127; --ink:#e8ecef; --muted:#9aa5b0; --line:#2d363f;
+    --soft:#1d2a26; --accent:#3f9c7c; --accent-ink:#0d1512; --eq:#8fd3ff; --field:#ffb36b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12161a; --panel:#1b2127; --ink:#e8ecef; --muted:#9aa5b0; --line:#2d363f;
+  --soft:#1d2a26; --accent:#3f9c7c; --accent-ink:#0d1512; --eq:#8fd3ff; --field:#ffb36b;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;}
+.app{max-width:1440px;margin:0 auto;padding:16px clamp(12px,2vw,28px) 24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-family:"Source Serif 4",Georgia,serif;font-weight:700;font-size:clamp(20px,2.3vw,30px);margin:0;letter-spacing:-.01em}
+h1 small{display:block;font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-weight:400;font-size:14px;color:var(--muted);letter-spacing:0;margin-top:2px}
+.dots{display:flex;gap:6px}
+.dots button{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);
+  color:var(--muted);font:700 14px "Atkinson Hyperlegible",sans-serif;cursor:pointer}
+.dots button[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dots button.done{color:var(--ink);border-color:var(--accent)}
+main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(310px,1fr);gap:20px;align-items:start}
+@media (max-width:920px){main{grid-template-columns:1fr}}
+
+/* The chalkboard */
+.boardwrap{position:relative;height:min(76vh,880px);min-height:380px;border-radius:10px;
+  border:12px solid #6d4a2e;background:#1f3a33;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.18);overflow:hidden}
+.boardwrap::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;background:#5a3b22;pointer-events:none}
+@media (max-width:920px){.boardwrap{height:auto;aspect-ratio:1/1;min-height:0}}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+canvas.probe-on{cursor:grab}
+canvas.dragging{cursor:grabbing}
+.overlay{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:flex-end;
+  padding:0 16px 7%;pointer-events:none;text-align:center}
+.overlay.show{display:flex}
+.overlay .q{font-family:"Caveat",cursive;font-weight:700;color:#f4f1e6;font-size:clamp(26px,3.6vw,46px);line-height:1.1;
+  background:rgba(10,25,21,.62);padding:12px 22px;border-radius:12px;max-width:92%}
+.overlay button{pointer-events:auto;margin-top:14px;font:700 17px "Atkinson Hyperlegible",sans-serif;padding:11px 22px;border-radius:999px;
+  border:2px solid #f4f1e6;background:transparent;color:#f4f1e6;cursor:pointer}
+.overlay button:hover{background:rgba(244,241,230,.12)}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.chip{border:1.5px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px;border-radius:999px;
+  font:700 14px "Atkinson Hyperlegible",sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip .sw{width:14px;height:4px;border-radius:2px;background:currentColor}
+.chip[aria-pressed="false"]{color:var(--muted);opacity:.75}
+.chip[aria-pressed="true"]{border-color:var(--ink)}
+.sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+
+/* Panel */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;
+  min-height:min(76vh,880px)}
+@media (max-width:920px){.panel{min-height:0}}
+.stepnum{font-size:14px;color:var(--muted);margin:0}
+.panel h2{font-family:"Source Serif 4",Georgia,serif;font-size:clamp(23px,2.2vw,29px);line-height:1.2;margin:-8px 0 0}
+.body{font-size:18px;line-height:1.55}
+.body p{margin:0 0 10px}
+.m{font-family:"Source Serif 4","Cambria Math",Georgia,serif;font-style:italic;white-space:nowrap}
+.eqc{color:var(--eq);font-weight:700}
+.fc{color:var(--field);font-weight:700}
+.analogy{background:var(--soft);border-left:5px solid var(--accent);padding:13px 16px;border-radius:6px;font-size:17px;line-height:1.5}
+.analogy b{display:block;font-family:"Source Serif 4",Georgia,serif;font-size:16px;margin-bottom:3px}
+.tip{font-size:15px;color:var(--muted);line-height:1.5;border-top:1px dashed var(--line);padding-top:12px}
+.tip:empty{display:none}
+.deriv{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:d}
+.deriv li{font-family:"Source Serif 4","Cambria Math",Georgia,serif;font-size:18px;line-height:1.45;padding:8px 12px 8px 40px;
+  border-radius:6px;background:var(--soft);position:relative;transition:filter .35s, opacity .35s}
+.deriv li::before{counter-increment:d;content:counter(d);position:absolute;left:12px;top:8px;font-family:"Atkinson Hyperlegible",sans-serif;
+  font-weight:700;font-size:14px;color:var(--accent)}
+.deriv li.hidden{filter:blur(6px);opacity:.35}
+.deriv li .k{font-family:"Atkinson Hyperlegible",sans-serif;font-style:normal;font-weight:700;font-size:15px;margin-right:4px}
+.deriv li em{color:var(--muted);font-size:15px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.seg button{padding:8px 14px;border-radius:8px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);
+  font:700 15px "Atkinson Hyperlegible",sans-serif;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.readout{border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;font-size:16px;line-height:1.7;display:none}
+.readout.show{display:block}
+.readout h3{margin:0 0 4px;font-size:15px;color:var(--muted);font-weight:700}
+.readout .row{display:flex;justify-content:space-between;gap:10px}
+.readout .v{font-family:"Source Serif 4",Georgia,serif;font-weight:700;font-variant-numeric:tabular-nums}
+.readout .prod{border-top:1px solid var(--line);margin-top:4px;padding-top:4px}
+.readout .ok{color:var(--accent)}
+.nav{display:flex;gap:10px;margin-top:auto}
+.btn{flex:1;padding:13px;border-radius:10px;font:700 16px "Atkinson Hyperlegible",sans-serif;cursor:pointer;
+  border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.btn.primary{flex:2;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.keys{font-size:13px;color:var(--muted);margin:0}
+kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px}
+button:focus-visible{outline:3px solid var(--eq);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.deriv li{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Why field lines cross equipotentials at 90°
+      <small>A six-step chalkboard demo of orthogonal trajectories</small></h1>
+    <nav class="dots" id="dots" aria-label="Steps"></nav>
+  </header>
+
+  <main>
+    <section>
+      <div class="boardwrap" id="boardwrap">
+        <canvas id="board" aria-label="Chalkboard showing equipotentials and field lines"></canvas>
+        <div class="overlay" id="overlay">
+          <div class="q">If these circles are equipotentials…<br>what do the field lines look like?</div>
+          <button id="reveal">Reveal the field lines</button>
+        </div>
+      </div>
+      <div class="controls" id="controls">
+        <button class="chip" data-layer="eq" style="--c:var(--eq)"><span class="sw" style="background:var(--eq)"></span>Equipotentials</button>
+        <button class="chip" data-layer="field"><span class="sw" style="background:var(--field)"></span>Field lines</button>
+        <button class="chip" data-layer="flow">Flow</button>
+        <button class="chip" data-layer="marks">90° marks</button>
+        <button class="chip" data-layer="probe">Drag point</button>
+        <span class="sep"></span>
+        <button class="chip" id="charge" aria-pressed="true">Charge: +</button>
+        <button class="chip" id="replay" aria-pressed="true">Redraw</button>
+        <button class="chip" id="fs" aria-pressed="true">Full screen</button>
+      </div>
+    </section>
+
+    <aside class="panel" aria-live="polite">
+      <p class="stepnum" id="stepnum"></p>
+      <h2 id="title"></h2>
+      <div class="body" id="body"></div>
+      <div class="analogy" id="analogy"></div>
+      <div class="readout" id="readout"></div>
+      <div class="tip" id="tip"></div>
+      <div class="nav">
+        <button class="btn" id="prev">Back</button>
+        <button class="btn primary" id="next">Next</button>
+      </div>
+      <p class="keys">Clicker or keyboard: <kbd>→</kbd> <kbd>Space</kbd> <kbd>PgDn</kbd> next, <kbd>←</kbd> <kbd>PgUp</kbd> back</p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const canvas = $('#board'), ctx = canvas.getContext('2d');
+const COL = { bg:'#1f3a33', grid:'rgba(255,255,255,0.045)', axis:'rgba(255,255,255,0.17)',
+  eq:'#8fd3ff', field:'#ffb36b', ok:'#b8f5a0', chalk:'#f4f1e6' };
+const R = 5.2;
+let W=0,H=0,s=1,cx=0,cy=0,dpr=1,t=0;
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const state = {
+  step:0, layers:{eq:0,field:0,flow:0,marks:0,probe:0},
+  start:{eq:-99,field:-99}, family:'circles', charge:1, reveal:1,
+  probe:{x:2.4,y:1.7}, dragging:false
+};
+
+const FAM = {
+  circles:{ label:'Circles', A:'x² + y² = C', B:'y = kx',
+    deriv:['x² + y² = C','2x + 2y·y′ = 0 &nbsp;⇒&nbsp; y′ = −x/y','Orthogonal: y′ → −1/y′ &nbsp;⇒&nbsp; y′ = y/x','dy/y = dx/x &nbsp;⇒&nbsp; <b>y = kx</b> &nbsp;<em>(lines through origin)</em>'] },
+  parabolas:{ label:'Parabolas', A:'y = cx²', B:'x² + 2y² = k',
+    deriv:['y = cx² &nbsp;⇒&nbsp; c = y/x²','y′ = 2cx = 2y/x','Orthogonal: y′ = −x/(2y)','2y dy = −x dx &nbsp;⇒&nbsp; <b>x² + 2y² = k</b> &nbsp;<em>(ellipses)</em>'] },
+  hyperbolas:{ label:'Hyperbolas', A:'xy = c', B:'x² − y² = k',
+    deriv:['xy = c','y + x·y′ = 0 &nbsp;⇒&nbsp; y′ = −y/x','Orthogonal: y′ = x/y','y dy = x dx &nbsp;⇒&nbsp; <b>x² − y² = k</b> &nbsp;<em>(hyperbolas)</em>'] }
+};
+
+const DERIV5 = [
+  '<span class="k">Family</span> x² + y² = C',
+  '<span class="k">Differentiate</span> 2x + 2y·y′ = 0 &nbsp;⇒&nbsp; <b>y′ = −x/y</b> <em>(slope of circle)</em>',
+  '<span class="k">Perpendicular</span> m₁·m₂ = −1, so replace y′ by −1/y′',
+  '−1/y′ = −x/y &nbsp;⇒&nbsp; <b>y′ = y/x</b> <em>(slope of field line)</em>',
+  '<span class="k">Separate</span> dy/y = dx/x &nbsp;⇒&nbsp; ln|y| = ln|x| + c',
+  '<span class="k">Answer</span> <b>y = kx</b>: straight lines through the centre ✓'
+];
+
+const STEPS = [
+  { title:'Draw the equipotentials',
+    layers:{eq:1,field:0,flow:0,marks:0,probe:0},
+    body:()=>`<p>Draw concentric circles <span class="m eqc">x² + y² = C</span>.</p>
+      <p>Each circle is an <span class="eqc">equipotential</span>: every point on it has the same potential <span class="m">V</span>. Bigger circle, bigger <span class="m">C</span>.</p>`,
+    analogy:`<b>A round hill seen from above</b>These are contour lines on a map of a perfectly round hill. Walk along one contour and you never go up or down.`,
+    tip:`Ask the class: what stays the same as I trace one circle? What changes when I jump to the next circle?` },
+  { title:'Ask the question',
+    layers:{eq:1,field:0,flow:0,marks:0,probe:0},
+    body:()=>`<p>If these circles are equipotentials, what do the <span class="fc">field lines</span> look like?</p>
+      <p>Let students guess and sketch before you reveal.</p>`,
+    analogy:`<b>Pour water on the hill</b>Pour a bucket of water on top of the round hill. Which path does each stream take?`,
+    tip:`Hint if they are stuck: the field points where the potential changes fastest, like the steepest way down a hill.` },
+  { title:'Field lines are radial',
+    layers:{eq:1,field:1,flow:1,marks:0,probe:0},
+    body:()=>`<p>The field lines are <span class="fc">straight lines through the centre</span>: <span class="m fc">y = kx</span>.</p>
+      <p>For a positive charge they point outward. Press <b>Charge</b> below to flip them inward.</p>`,
+    analogy:`<b>A bicycle wheel</b>The rim is an equipotential; the spokes are field lines. Water on a round hill runs straight down, along the spokes.`,
+    tip:`Students usually say "radial lines going out from the centre." Confirm it, then ask: how do spokes meet the rim?` },
+  { title:'They always meet at 90°',
+    layers:{eq:1,field:1,flow:0,marks:1,probe:1},
+    body:()=>`<p>Every radial line cuts every circle at a right angle.</p>
+      <p><b>Drag the white point</b> anywhere on the board. The tangent to the circle and the radial line stay perpendicular, so <span class="m">m₁ · m₂ = −1</span>.</p>`,
+    analogy:`<b>Why it must be 90°</b>Walking along a contour needs no effort, because the height does not change. If the field were slanted, part of it would push you along the contour, doing work where nothing changes. So the field has to be exactly perpendicular.`,
+    tip:`Drag the point onto an axis: one slope becomes 0 and the other becomes vertical. Still perpendicular.` },
+  { title:'Radial lines are the orthogonal trajectories',
+    layers:{eq:1,field:1,flow:0,marks:1,probe:1},
+    body:()=>`<p>Now prove it. Press <b>Next</b> to reveal one line at a time.</p>
+      <ol class="deriv">${DERIV5.map((l,i)=>`<li class="${i<state.reveal?'':'hidden'}">${l}</li>`).join('')}</ol>`,
+    analogy:`<b>The three-step recipe</b>1. Find the slope of the given family and remove C.<br>2. Flip it: replace y′ by −1/y′.<br>3. Solve the new differential equation.`,
+    tip:`The orthogonal trajectories of a family are curves that cut every member of the family at 90°. Field lines are the orthogonal trajectories of equipotentials.` },
+  { title:'Same recipe, any family',
+    layers:{eq:1,field:1,flow:0,marks:0,probe:1},
+    body:()=>`<div class="seg" role="group" aria-label="Choose a family">${Object.keys(FAM).map(k=>
+        `<button data-fam="${k}" aria-pressed="${state.family===k}">${FAM[k].label}</button>`).join('')}</div>
+      <p><span class="m eqc">${FAM[state.family].A}</span> &nbsp;is orthogonal to&nbsp; <span class="m fc">${FAM[state.family].B}</span></p>
+      <ol class="deriv">${FAM[state.family].deriv.map(l=>`<li>${l}</li>`).join('')}</ol>`,
+    analogy:`<b>Contour map and river map</b>Every contour map has a matching river map that crosses it at right angles. Pick a family and drag the point: the product of slopes is still −1.`,
+    tip:`Exercise for the class: find the orthogonal trajectories of y = cx³. (Answer: x² + 3y² = k.)` }
+];
+
+/* ---------- geometry helpers ---------- */
+const clamp = (v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const toS = (x,y)=>[cx+x*s, cy-y*s];
+const toW = (X,Y)=>[(X-cx)/s, (cy-Y)/s];
+
+function resize(){
+  const r = canvas.getBoundingClientRect();
+  dpr = window.devicePixelRatio||1;
+  W = r.width; H = r.height;
+  canvas.width = Math.max(1,Math.round(W*dpr)); canvas.height = Math.max(1,Math.round(H*dpr));
+  s = Math.min(W,H)/(2*R); cx = W/2; cy = H/2;
+}
+new ResizeObserver(resize).observe(canvas);
+window.addEventListener('resize', resize);
+
+function glow(col,b=6){ ctx.strokeStyle=col; ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=b; }
+function noGlow(){ ctx.shadowBlur=0; }
+
+function pathFn(f,x0,x1,n=260){
+  ctx.beginPath(); let pen=false;
+  for(let i=0;i<=n;i++){
+    const x=x0+(x1-x0)*i/n, y=f(x);
+    if(!isFinite(y)||Math.abs(y)>40){pen=false;continue;}
+    const [X,Y]=toS(x,y);
+    if(pen) ctx.lineTo(X,Y); else {ctx.moveTo(X,Y);pen=true;}
+  }
+  ctx.stroke();
+}
+function pathParam(fx,fy,t0,t1,n=260){
+  ctx.beginPath(); let pen=false;
+  for(let i=0;i<=n;i++){
+    const u=t0+(t1-t0)*i/n, x=fx(u), y=fy(u);
+    if(!isFinite(x)||!isFinite(y)||Math.abs(x)>40||Math.abs(y)>40){pen=false;continue;}
+    const [X,Y]=toS(x,y);
+    if(pen) ctx.lineTo(X,Y); else {ctx.moveTo(X,Y);pen=true;}
+  }
+  ctx.stroke();
+}
+function segment(x0,y0,x1,y1){ const a=toS(x0,y0), b=toS(x1,y1); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); }
+function arrowAt(x,y,ux,uy,size){
+  const [X,Y]=toS(x,y), a=Math.atan2(-uy,ux);
+  ctx.save(); ctx.translate(X,Y); ctx.rotate(a);
+  ctx.beginPath(); ctx.moveTo(size,0); ctx.lineTo(-size*.75,size*.62); ctx.lineTo(-size*.75,-size*.62); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function chalkText(txt,X,Y,col,size,align='left'){
+  ctx.font = `700 ${size}px Caveat, "Comic Sans MS", cursive`;
+  ctx.textAlign=align; ctx.textBaseline='middle';
+  glow(col,4); ctx.fillText(txt,X,Y); noGlow();
+}
+
+/* ---------- drawing ---------- */
+function drawGrid(){
+  const vx=W/2/s, vy=H/2/s;
+  ctx.lineWidth=1; ctx.strokeStyle=COL.grid;
+  for(let i=Math.ceil(-vx);i<=vx;i++){ if(i) segment(i,-vy,i,vy); }
+  for(let j=Math.ceil(-vy);j<=vy;j++){ if(j) segment(-vx,j,vx,j); }
+  ctx.strokeStyle=COL.axis; segment(-vx,0,vx,0); segment(0,-vy,0,vy);
+}
+function maxRadius(){ return Math.hypot(W,H)/2/s; }
+
+function drawCircles(te){
+  const maxR = Math.ceil(maxRadius());
+  ctx.lineWidth=2.6; ctx.lineCap='round';
+  for(let i=0;i<maxR;i++){
+    const r=i+1, p=clamp((te-i*0.18)/0.7);
+    if(p<=0) continue;
+    glow(COL.eq,6);
+    ctx.beginPath(); ctx.arc(cx,cy,r*s,0,-2*Math.PI*p,true); ctx.stroke(); noGlow();
+    if(r<=5 && p>0.97){
+      const a=Math.PI*0.3, [X,Y]=toS((r)*Math.cos(a),(r)*Math.sin(a));
+      chalkText(`C = ${r*r}`, X+6, Y-10, COL.eq, Math.max(15,Math.min(22,s*0.36)));
+    }
+  }
+}
+const NR=16;
+function drawRays(te){
+  const L=maxRadius();
+  ctx.lineWidth=2.4; ctx.lineCap='round';
+  for(let k=0;k<NR;k++){
+    const th=2*Math.PI*k/NR, c=Math.cos(th), sn=Math.sin(th);
+    const p=clamp((te-k*0.035)/0.8); if(p<=0) continue;
+    const r1=0.28+(L-0.28)*p;
+    glow(COL.field,6); segment(0.28*c,0.28*sn,r1*c,r1*sn);
+    [1.5,2.5,3.5,4.5,5.5,6.5].forEach(r=>{ if(r<r1-0.2) arrowAt(r*c,r*sn,c*state.charge,sn*state.charge,Math.max(7,s*0.13)); });
+    noGlow();
+  }
+}
+function drawFlow(){
+  const L=maxRadius();
+  ctx.fillStyle=COL.chalk;
+  for(let k=0;k<NR;k++){
+    const th=2*Math.PI*k/NR, c=Math.cos(th), sn=Math.sin(th);
+    for(let j=0;j<3;j++){
+      let r=((t*0.9 + j*L/3 + k*0.13) % L);
+      if(state.charge<0) r=L-r;
+      if(r<0.35) continue;
+      const [X,Y]=toS(r*c,r*sn);
+      ctx.globalAlpha=0.85*clamp((r-0.35)/0.6);
+      ctx.beginPath(); ctx.arc(X,Y,3.2,0,2*Math.PI); ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+}
+function rightAngle(px,py,ux,uy,vx,vy,a){
+  const p1=toS(px+a*ux,py+a*uy), p2=toS(px+a*ux+a*vx,py+a*uy+a*vy), p3=toS(px+a*vx,py+a*vy);
+  ctx.beginPath(); ctx.moveTo(p1[0],p1[1]); ctx.lineTo(p2[0],p2[1]); ctx.lineTo(p3[0],p3[1]); ctx.stroke();
+}
+function drawMarks(){
+  ctx.lineWidth=2; glow(COL.ok,4);
+  const L=maxRadius();
+  for(let k=0;k<NR;k++){
+    const th=2*Math.PI*k/NR, c=Math.cos(th), sn=Math.sin(th);
+    const rs = k%2===0 ? [3,5] : [3];
+    rs.forEach(r=>{ if(r<L) rightAngle(r*c,r*sn,-sn,c,-c,-sn,0.26); });
+  }
+  noGlow();
+}
+function drawCharge(){
+  const [X,Y]=toS(0,0);
+  ctx.fillStyle=COL.bg; ctx.beginPath(); ctx.arc(X,Y,13,0,2*Math.PI); ctx.fill();
+  glow(COL.chalk,5); ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X,Y,13,0,2*Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(X-6,Y); ctx.lineTo(X+6,Y);
+  if(state.charge>0){ ctx.moveTo(X,Y-6); ctx.lineTo(X,Y+6); }
+  ctx.stroke(); noGlow();
+}
+
+/* other families (step 6) */
+function familyA(fam){
+  const vx=W/2/s+1;
+  if(fam==='parabolas'){
+    [-4,-2,-1,-0.5,-0.25,-0.1,0,0.1,0.25,0.5,1,2,4].forEach(c=>pathFn(x=>c*x*x,-vx,vx));
+  } else if(fam==='hyperbolas'){
+    [-8,-4,-2,-1,-0.5,0.5,1,2,4,8].forEach(c=>{ pathFn(x=>c/x,0.005,vx,400); pathFn(x=>c/x,-vx,-0.005,400); });
+    pathFn(x=>0,-vx,vx); segment(0,-40,0,40);
+  }
+}
+function familyB(fam){
+  const vx=W/2/s+1;
+  if(fam==='parabolas'){
+    [0.25,0.75,1.5,3,5,8,12,18,26,36,50].forEach(k=>{ const a=Math.sqrt(k), b=Math.sqrt(k/2);
+      pathParam(u=>a*Math.cos(u),u=>b*Math.sin(u),0,2*Math.PI); });
+  } else if(fam==='hyperbolas'){
+    [-16,-10,-6,-3,-1.5,-0.5,0.5,1.5,3,6,10,16].forEach(k=>{ const a=Math.sqrt(Math.abs(k));
+      if(k>0){ pathParam(u=>a*Math.cosh(u),u=>a*Math.sinh(u),-4,4); pathParam(u=>-a*Math.cosh(u),u=>a*Math.sinh(u),-4,4); }
+      else { pathParam(u=>a*Math.sinh(u),u=>a*Math.cosh(u),-4,4); pathParam(u=>a*Math.sinh(u),u=>-a*Math.cosh(u),-4,4); }
+    });
+    pathFn(x=>x,-vx,vx); pathFn(x=>-x,-vx,vx);
+  }
+}
+
+function dirs(x,y){
+  if(state.family==='circles') return {T:[-y,x], N:[x,y]};
+  if(state.family==='parabolas') return {T:[x,2*y], N:[-2*y,x]};
+  return {T:[x,-y], N:[y,x]};
+}
+function throughCurves(x,y){
+  const fam=state.family, vx=W/2/s+1;
+  ctx.lineWidth=4.5;
+  if(fam==='circles'){
+    const r=Math.hypot(x,y), a=Math.atan2(y,x), L=maxRadius();
+    glow(COL.eq,12); ctx.beginPath(); ctx.arc(cx,cy,r*s,0,2*Math.PI); ctx.stroke();
+    glow(COL.field,12); segment(0,0,L*Math.cos(a),L*Math.sin(a));
+  } else if(fam==='parabolas'){
+    glow(COL.eq,12);
+    if(Math.abs(x)>1e-3){ const c=y/(x*x); pathFn(u=>c*u*u,-vx,vx); } else segment(0,-40,0,40);
+    const k=x*x+2*y*y, a=Math.sqrt(k), b=Math.sqrt(k/2);
+    glow(COL.field,12); pathParam(u=>a*Math.cos(u),u=>b*Math.sin(u),0,2*Math.PI);
+  } else {
+    const c=x*y, k=x*x-y*y;
+    glow(COL.eq,12);
+    if(Math.abs(c)<1e-6){ pathFn(()=>0,-vx,vx); segment(0,-40,0,40); }
+    else { pathFn(u=>c/u,0.005,vx,400); pathFn(u=>c/u,-vx,-0.005,400); }
+    glow(COL.field,12);
+    const a=Math.sqrt(Math.abs(k));
+    if(Math.abs(k)<1e-6){ pathFn(u=>u,-vx,vx); pathFn(u=>-u,-vx,vx); }
+    else if(k>0){ pathParam(u=>a*Math.cosh(u),u=>a*Math.sinh(u),-4,4); pathParam(u=>-a*Math.cosh(u),u=>a*Math.sinh(u),-4,4); }
+    else { pathParam(u=>a*Math.sinh(u),u=>a*Math.cosh(u),-4,4); pathParam(u=>a*Math.sinh(u),u=>-a*Math.cosh(u),-4,4); }
+  }
+  noGlow();
+}
+function drawProbe(){
+  const {x,y}=state.probe;
+  throughCurves(x,y);
+  const d=dirs(x,y);
+  let tn=Math.hypot(d.T[0],d.T[1])||1, nn=Math.hypot(d.N[0],d.N[1])||1;
+  const T=[d.T[0]/tn,d.T[1]/tn], N=[d.N[0]/nn,d.N[1]/nn];
+  const L=1.5;
+  ctx.lineWidth=3; ctx.setLineDash([10,7]);
+  ctx.strokeStyle=COL.chalk; segment(x-L*T[0],y-L*T[1],x+L*T[0],y+L*T[1]);
+  ctx.setLineDash([]);
+  ctx.lineWidth=3; glow(COL.ok,6); rightAngle(x,y,T[0],T[1],N[0],N[1],0.34); noGlow();
+  const fs=Math.max(16,Math.min(24,s*0.38));
+  const [tx,ty]=toS(x+(L+0.25)*T[0],y+(L+0.25)*T[1]);
+  chalkText('tangent (m₁)',tx,ty,COL.chalk,fs,'center');
+  const [nx,ny]=toS(x+0.95*N[0],y+0.95*N[1]);
+  chalkText('m₂',nx+10,ny-10,COL.field,fs,'left');
+  const [X,Y]=toS(x,y);
+  ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.arc(X,Y,9,0,2*Math.PI); ctx.fill(); noGlow();
+  ctx.strokeStyle=COL.bg; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X,Y,4,0,2*Math.PI); ctx.stroke();
+  chalkText('P',X-16,Y+16,COL.chalk,fs+2,'center');
+}
+function drawLegend(){
+  const f=FAM[state.family], fs=Math.max(18,Math.min(30,W/28));
+  let y0=fs*0.9;
+  if(state.layers.eq){ chalkText(`${f.A}   (equipotentials)`, 16, y0, COL.eq, fs); y0+=fs*1.05; }
+  if(state.layers.field){ chalkText(`${f.B}   (field lines)`, 16, y0, COL.field, fs); }
+}
+
+function draw(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=COL.bg; ctx.fillRect(0,0,W,H);
+  drawGrid();
+  const L=state.layers, te=t-state.start.eq, tf=t-state.start.field;
+  if(state.family==='circles'){
+    if(L.eq) drawCircles(te);
+    if(L.field) drawRays(tf);
+    if(L.flow && L.field && tf>1 && !reduced) drawFlow();
+    if(L.marks && L.eq && L.field) drawMarks();
+    if(L.eq || L.field) drawCharge();
+  } else {
+    ctx.lineWidth=2.2; ctx.lineCap='round';
+    if(L.eq){ ctx.globalAlpha=clamp(te/0.8); glow(COL.eq,5); familyA(state.family); noGlow(); }
+    if(L.field){ ctx.globalAlpha=clamp(tf/0.8); glow(COL.field,5); familyB(state.family); noGlow(); }
+    ctx.globalAlpha=1;
+  }
+  if(L.probe) drawProbe();
+  drawLegend();
+}
+function loop(ms){ t=ms/1000; draw(); requestAnimationFrame(loop); }
+
+/* ---------- live readout ---------- */
+function slopeOf(v){ return Math.abs(v[0])<1e-9*Math.max(1,Math.abs(v[1])) ? Infinity : v[1]/v[0]; }
+function fmt(m){ return m===Infinity ? '∞ (vertical)' : (Math.abs(m)<5e-4?0:m).toFixed(3); }
+function updateReadout(){
+  const el=$('#readout');
+  if(!state.layers.probe){ el.classList.remove('show'); return; }
+  el.classList.add('show');
+  const {x,y}=state.probe, d=dirs(x,y);
+  const m1=slopeOf(d.T), m2=slopeOf(d.N);
+  let prod;
+  if(m1===Infinity||m2===Infinity) prod='vertical ⟂ horizontal ✓';
+  else { const p=m1*m2; prod = (Math.abs(p)>1e6? '→ −1' : p.toFixed(3)) + (Math.abs(p+1)<1e-6||Math.abs(p)>1e6?' ✓':''); }
+  const cos=(d.T[0]*d.N[0]+d.T[1]*d.N[1])/(Math.hypot(...d.T)*Math.hypot(...d.N)||1);
+  const ang=(Math.acos(clamp(cos,-1,1))*180/Math.PI).toFixed(1);
+  el.innerHTML=`<h3>Live check at P = (${x.toFixed(2)}, ${y.toFixed(2)})</h3>
+    <div class="row"><span><span class="eqc">Equipotential</span> slope m₁</span><span class="v">${fmt(m1)}</span></div>
+    <div class="row"><span><span class="fc">Field line</span> slope m₂</span><span class="v">${fmt(m2)}</span></div>
+    <div class="row prod"><span>m₁ × m₂</span><span class="v ok">${prod}</span></div>
+    <div class="row"><span>Angle between them</span><span class="v ok">${ang}°</span></div>`;
+}
+
+/* ---------- step control ---------- */
+function setLayer(k,v){
+  if(v && !state.layers[k] && (k==='eq'||k==='field')) state.start[k]=t;
+  state.layers[k]=v?1:0;
+}
+function goStep(i, fromBack=false){
+  i=clamp(i,0,STEPS.length-1);
+  const prevStep=state.step;
+  state.step=i;
+  if(i!==5 && state.family!=='circles'){ state.family='circles'; state.start.eq=state.start.field=t; }
+  if(i===0 && prevStep!==0){ state.layers.eq=0; }
+  Object.entries(STEPS[i].layers).forEach(([k,v])=>setLayer(k,v));
+  if(i===0) state.start.eq=t;
+  if(i===4) state.reveal = fromBack ? DERIV5.length : 1;
+  render();
+}
+function next(){
+  if(state.step===4 && state.reveal<DERIV5.length){ state.reveal++; render(); return; }
+  if(state.step===STEPS.length-1){ goStep(0); return; }
+  goStep(state.step+1);
+}
+function prev(){
+  if(state.step===4 && state.reveal>1){ state.reveal--; render(); return; }
+  goStep(state.step-1,true);
+}
+
+function render(){
+  const st=STEPS[state.step];
+  $('#stepnum').textContent=`Step ${state.step+1} of ${STEPS.length}`;
+  $('#title').textContent=st.title;
+  $('#body').innerHTML=st.body();
+  $('#analogy').innerHTML=st.analogy;
+  $('#tip').textContent=st.tip||'';
+  $('#overlay').classList.toggle('show', state.step===1);
+  $('#prev').disabled = state.step===0;
+  const nb=$('#next');
+  if(state.step===4 && state.reveal<DERIV5.length) nb.textContent='Next line';
+  else if(state.step===STEPS.length-1) nb.textContent='Start over';
+  else nb.textContent='Next';
+  document.querySelectorAll('#dots button').forEach((b,i)=>{
+    b.toggleAttribute('aria-current', i===state.step);
+    if(i===state.step) b.setAttribute('aria-current','step');
+    b.classList.toggle('done', i<state.step);
+  });
+  document.querySelectorAll('.chip[data-layer]').forEach(b=>b.setAttribute('aria-pressed', !!state.layers[b.dataset.layer]));
+  $('#charge').textContent = `Charge: ${state.charge>0?'+':'−'}`;
+  document.querySelectorAll('[data-fam]').forEach(b=>b.addEventListener('click',()=>{
+    state.family=b.dataset.fam; state.start.eq=state.start.field=t;
+    const r=Math.hypot(state.probe.x,state.probe.y); if(r<0.8){ state.probe={x:1.8,y:1.3}; }
+    render();
+  }));
+  canvas.classList.toggle('probe-on', !!state.layers.probe);
+  updateReadout();
+}
+
+/* dots */
+const dots=$('#dots');
+STEPS.forEach((st,i)=>{ const b=document.createElement('button'); b.textContent=i+1; b.title=st.title;
+  b.setAttribute('aria-label',`Step ${i+1}: ${st.title}`); b.addEventListener('click',()=>goStep(i, i<state.step)); dots.appendChild(b); });
+
+/* controls */
+document.querySelectorAll('.chip[data-layer]').forEach(b=>b.addEventListener('click',()=>{
+  const k=b.dataset.layer; setLayer(k,!state.layers[k]); render();
+}));
+$('#charge').addEventListener('click',()=>{ state.charge*=-1; render(); });
+$('#replay').addEventListener('click',()=>{ state.start.eq=t; state.start.field=t+ (state.layers.eq?1.2:0); });
+const fsBtn=$('#fs');
+if(!document.fullscreenEnabled) fsBtn.style.display='none';
+fsBtn.addEventListener('click',()=>{
+  try{
+    if(document.fullscreenElement) document.exitFullscreen();
+    else { const p=document.documentElement.requestFullscreen(); if(p&&p.catch) p.catch(()=>{}); }
+  }catch(e){}
+});
+document.addEventListener('fullscreenchange',()=>{ fsBtn.textContent=document.fullscreenElement?'Exit full screen':'Full screen'; });
+$('#next').addEventListener('click',next);
+$('#prev').addEventListener('click',prev);
+$('#reveal').addEventListener('click',()=>goStep(2));
+
+document.addEventListener('keydown',e=>{
+  const onBtn = e.target && e.target.tagName==='BUTTON';
+  if(e.key==='ArrowRight'||e.key==='PageDown'||(e.key===' '&&!onBtn)){ e.preventDefault(); next(); }
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); prev(); }
+});
+
+/* dragging the probe */
+function moveProbe(e){
+  const r=canvas.getBoundingClientRect();
+  let [x,y]=toW(e.clientX-r.left,e.clientY-r.top);
+  const d=Math.hypot(x,y);
+  if(d<0.25){ if(d<1e-6){x=0.25;y=0;} else {x*=0.25/d;y*=0.25/d;} }
+  const vx=W/2/s-0.2, vy=H/2/s-0.2;
+  state.probe={x:clamp(x,-vx,vx), y:clamp(y,-vy,vy)};
+  updateReadout();
+}
+canvas.addEventListener('pointerdown',e=>{
+  if(!state.layers.probe) return;
+  state.dragging=true; canvas.classList.add('dragging');
+  try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+  moveProbe(e);
+});
+canvas.addEventListener('pointermove',e=>{ if(state.dragging) moveProbe(e); });
+const stop=()=>{ state.dragging=false; canvas.classList.remove('dragging'); };
+canvas.addEventListener('pointerup',stop); canvas.addEventListener('pointercancel',stop);
+
+resize();
+goStep(0);
+requestAnimationFrame(loop);
+})();
+</script>
+<a href="../index.html" style="position:fixed;left:14px;bottom:14px;z-index:99999;font:600 13px system-ui,sans-serif;background:rgba(10,14,22,.88);color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer">&larr; Mathematics Lab</a>
+</body>
+</html>

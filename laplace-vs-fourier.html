@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of a Chord — Laplace &amp; Fourier as Frequency Detectives</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0F14;
+    --panel: #121821;
+    --panel-2: #0F141C;
+    --grid: #1E2A38;
+    --fourier: #5CFFC2;
+    --fourier-dim: #2C6B58;
+    --laplace: #F2A65A;
+    --laplace-dim: #7A5A34;
+    --text: #E8ECF1;
+    --muted: #6B7787;
+    --muted-2: #8B96A5;
+    --hair: #202A36;
+    --roc: #2A3F52;
+    --red: #FF7A7A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .page{max-width:980px;margin:0 auto;padding:0 24px 120px;}
+
+  /* HERO */
+  .hero{
+    padding:90px 24px 60px;
+    max-width:980px;
+    margin:0 auto;
+    position:relative;
+  }
+  .hero-eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:0.18em;
+    color:var(--fourier);
+    text-transform:uppercase;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .hero-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--fourier);box-shadow:0 0 8px var(--fourier);}
+  h1.hero-title{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:800;
+    font-size:clamp(32px,5.5vw,58px);
+    line-height:1.05;
+    margin:0 0 22px;
+    letter-spacing:-0.01em;
+  }
+  h1.hero-title .accent{color:var(--laplace);}
+  .hero-sub{
+    font-size:17px;
+    color:var(--muted-2);
+    max-width:640px;
+    margin:0 0 36px;
+  }
+  #heroScope{
+    width:100%;
+    height:140px;
+    display:block;
+    border-radius:10px;
+    background:var(--panel-2);
+    border:1px solid var(--hair);
+  }
+
+  /* SECTIONS */
+  section{padding:64px 0 8px; border-top:1px solid var(--hair);}
+  section:first-of-type{border-top:none;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow .tag{
+    padding:2px 8px;
+    border:1px solid var(--hair);
+    border-radius:4px;
+    color:var(--text);
+  }
+  .eyebrow.f .tag{color:var(--fourier);border-color:var(--fourier-dim);}
+  .eyebrow.l .tag{color:var(--laplace);border-color:var(--laplace-dim);}
+  h2{
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(22px,3vw,30px);
+    margin:0 0 14px;
+    font-weight:700;
+  }
+  p.lead{color:var(--muted-2);font-size:15.5px;max-width:720px;margin:0 0 28px;}
+  p.lead b{color:var(--text);font-weight:600;}
+
+  /* PANEL */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:12px;
+    padding:22px;
+    margin-bottom:22px;
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .panel-title{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted-2);letter-spacing:0.04em;}
+  .panel-title .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;}
+  canvas.scope{width:100%;display:block;border-radius:8px;background:var(--panel-2);}
+
+  /* NOTE CONTROLS */
+  .notes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:18px;}
+  .note-card{
+    background:var(--panel-2);
+    border:1px solid var(--hair);
+    border-radius:10px;
+    padding:16px;
+  }
+  .note-card.off{opacity:0.4;}
+  .note-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .note-name{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;}
+  .note-toggle{
+    width:34px;height:19px;border-radius:20px;background:var(--hair);position:relative;cursor:pointer;border:none;flex:none;
+  }
+  .note-toggle::after{
+    content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:all .15s ease;
+  }
+  .note-toggle.on{background:rgba(92,255,194,0.25);}
+  .note-toggle.on::after{left:17px;background:var(--fourier);}
+  .ctrl{margin-bottom:10px;}
+  .ctrl label{
+    display:flex;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2);margin-bottom:4px;
+  }
+  .ctrl label span.val{color:var(--text);}
+  input[type=range]{
+    -webkit-appearance:none;width:100%;height:3px;background:var(--hair);border-radius:2px;outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--fourier);cursor:pointer;
+    box-shadow:0 0 0 3px rgba(92,255,194,0.15);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;background:var(--fourier);cursor:pointer;border:none;
+  }
+
+  .btn{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--hair);
+    padding:9px 16px;
+    border-radius:7px;
+    cursor:pointer;
+    letter-spacing:0.02em;
+  }
+  .btn:hover{border-color:var(--muted);}
+  .btn.primary{background:rgba(92,255,194,0.1);border-color:var(--fourier-dim);color:var(--fourier);}
+  .btn.primary:hover{border-color:var(--fourier);}
+
+  .readout-row{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;}
+  .readout{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--muted-2);}
+  .readout b{color:var(--text);}
+
+  .callout{
+    border-left:2px solid var(--laplace-dim);
+    padding:4px 0 4px 16px;
+    color:var(--muted-2);
+    font-size:14.5px;
+    margin:18px 0;
+  }
+  .callout b{color:var(--laplace);}
+  .callout.g{border-color:var(--fourier-dim);}
+  .callout.g b{color:var(--fourier);}
+
+  /* COMPARISON TABLE */
+  table.compare{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;}
+  table.compare th,table.compare td{
+    text-align:left;padding:12px 14px;border-bottom:1px solid var(--hair);vertical-align:top;
+  }
+  table.compare th{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);
+    font-weight:500;
+  }
+  table.compare td.row-label{font-family:'JetBrains Mono',monospace;color:var(--muted-2);font-size:12.5px;white-space:nowrap;}
+  table.compare td.f{color:var(--fourier);}
+  table.compare td.l{color:var(--laplace);}
+  table.compare td{color:var(--text);}
+
+  footer{
+    padding:50px 0 20px;
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation: none !important; transition: none !important; }
+  }
+
+  ::selection{background:var(--laplace);color:#0B0F14;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow"><span class="dot"></span>an interactive lab notebook</div>
+  <h1 class="hero-title">Anatomy of a<br>Musical <span class="accent">Chord</span></h1>
+  <p class="hero-sub">Every chord you've ever heard is really several pure tones, each ringing and dying away at its own rate, added into one messy waveform. Below, we dissect one — and watch Fourier and Laplace transform each act as a detective, pulling the hidden notes back out.</p>
+  <canvas id="heroScope"></canvas>
+</div>
+
+<div class="page">
+
+  <!-- SECTION 1: BUILD THE SIGNAL -->
+  <section id="signal">
+    <div class="eyebrow"><span class="tag">01</span> the signal</div>
+    <h2>Build a chord out of three dying notes</h2>
+    <p class="lead">A real plucked or struck note is not an eternal, pure sine wave — it is a sine wave wrapped in a <b>decaying envelope</b>, e−<span class="mono">αt</span>. Set the pitch, loudness, phase and decay rate of three notes below; they'll sum into one composite wave — your "complex musical wave."</p>
+
+    <div class="notes-grid" id="notesGrid"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="swatch" style="background:var(--fourier)"></span>composite waveform — time domain, x(t)</div>
+        <div class="readout mono" id="signalReadout"></div>
+      </div>
+      <canvas class="scope" id="timeCanvas" height="220"></canvas>
+      <div class="readout-row">
+        <button class="btn primary" id="playBtn">▶ hear this chord</button>
+        <label class="readout" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="overlayToggle" style="accent-color:var(--fourier)"> show individual notes overlaid</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: FOURIER -->
+  <section id="fourier">
+    <div class="eyebrow f"><span class="tag">02 · fourier</span></div>
+    <h2>Fourier transform — the frequency detective who searches</h2>
+    <p class="lead">The Fourier transform asks one question, over and over, for every possible frequency <span class="mono">f</span>: <i>"how much of a pure tone at exactly this frequency is hiding inside x(t)?"</i> It does this by correlating x(t) against test sinusoids and integrating:</p>
+    <p class="lead mono" style="color:var(--text);font-size:15px;">X(jω) = ∫₋∞^∞ x(t) e<sup>−jωt</sup> dt , &nbsp; ω = 2πf</p>
+    <p class="lead">Sweep enough frequencies and the ones actually present in the chord light up as tall peaks in <b>|X(jω)|</b> — that's frequency detection. The angle of X at that peak is the <b>phase</b>, and the sharpness of the peak hints at how long that note lingers.</p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="swatch" style="background:var(--fourier)"></span>magnitude spectrum |X(jω)| — detected frequencies</div>
+      </div>
+      <canvas class="scope" id="magCanvas" height="200"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="swatch" style="background:var(--fourier)"></span>phase spectrum ∠X(jω) — detected phase, faded where signal is weak</div>
+      </div>
+      <canvas class="scope" id="phaseCanvas" height="160"></canvas>
+    </div>
+
+    <div class="callout g"><b>Notice:</b> Fourier finds the notes by <i>searching</i> — sweeping a dial across every frequency and watching for a spike, like tuning a radio. It never needs to know in advance what's in the signal.</div>
+  </section>
+
+  <!-- SECTION 3: LAPLACE -->
+  <section id="laplace">
+    <div class="eyebrow l"><span class="tag">03 · laplace</span></div>
+    <h2>Laplace transform — the detective who solves instead of searches</h2>
+    <p class="lead">Laplace generalises Fourier by testing against e<sup>−st</sup> instead of e<sup>−jωt</sup>, where <span class="mono">s = σ + jω</span> is a full <b>complex</b> frequency:</p>
+    <p class="lead mono" style="color:var(--text);font-size:15px;">X(s) = ∫₀^∞ x(t) e<sup>−st</sup> dt</p>
+    <p class="lead">For a decaying note A·e<sup>−αt</sup>cos(ω₀t+φ), the algebra factors cleanly and X(s) has a pair of <b>poles</b> — points where the denominator hits zero — sitting at exactly <span class="mono">s = −α ± jω₀</span>. No sweeping required: factor the denominator, and the pitch (ω₀) and the decay rate (α, the "strength"/persistence of that frequency) fall out directly as coordinates.</p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title"><span class="swatch" style="background:var(--laplace)"></span>s-plane — poles reveal pitch (↑ imaginary axis) and decay strength (← real axis)</div>
+      </div>
+      <canvas class="scope" id="splaneCanvas" height="320"></canvas>
+      <div class="readout-row" id="poleReadout"></div>
+    </div>
+
+    <div class="callout"><b>Reading the plane:</b> a pole close to the vertical jω-axis rings a long time — a strong, sustained frequency. A pole pushed far to the left dies out almost instantly — a weak, transient one. Drag a note's decay (α) slider up in section 01 and watch its pole walk left, while its Fourier peak in section 02 gets shorter and wider at the same time — two views of one fact.</div>
+    <div class="callout g"><b>Why the jω-axis matters:</b> Fourier is simply Laplace evaluated along <span class="mono">σ = 0</span> — the vertical axis of the s-plane. If every pole sits strictly to the left of that axis (every note truly decays, α&gt;0), the Fourier integral converges nicely. A note with α = 0 pushes its pole <i>onto</i> the axis — a tone that never dies, which is exactly why a perfectly pure, endless sine wave gives Fourier textbooks trouble (needs a delta function) while Laplace shrugs and just notes the pole sits at Re(s)=0.</div>
+  </section>
+
+  <!-- SECTION 4: COMPARISON -->
+  <section id="compare">
+    <div class="eyebrow"><span class="tag">04</span> side by side</div>
+    <h2>Two transforms, one family</h2>
+    <p class="lead">Laplace isn't a rival to Fourier — it's the parent. Fourier is the special case of Laplace living exactly on the imaginary axis.</p>
+    <table class="compare">
+      <tr><th></th><th style="color:var(--fourier)">Fourier, X(jω)</th><th style="color:var(--laplace)">Laplace, X(s), s=σ+jω</th></tr>
+      <tr><td class="row-label">test variable</td><td class="f">purely imaginary — jω only</td><td class="l">full complex plane — σ and jω</td></tr>
+      <tr><td class="row-label">detects</td><td class="f">frequency &amp; phase of steady content</td><td class="l">frequency, phase, <i>and</i> growth/decay rate</td></tr>
+      <tr><td class="row-label">method of detection</td><td class="f">sweep / search across ω, watch for peaks</td><td class="l">solve / factor — poles appear algebraically</td></tr>
+      <tr><td class="row-label">"strength" of a tone</td><td class="f">peak height &amp; width — indirect</td><td class="l">distance of pole from jω-axis — exact number (α)</td></tr>
+      <tr><td class="row-label">handles growing signals</td><td class="f">breaks down — integral diverges</td><td class="l">fine — just shift the ROC to the right</td></tr>
+      <tr><td class="row-label">best suited for</td><td class="f">steady-state audio, spectra, EQ, compression</td><td class="l">transients, circuits switching on, stability, control systems</td></tr>
+      <tr><td class="row-label">this chord, undamped (α→0)</td><td class="f">clean sharp spectral lines</td><td class="l">poles sit exactly on the jω-axis</td></tr>
+    </table>
+  </section>
+
+  <!-- SECTION 5: WHY -->
+  <section id="why">
+    <div class="eyebrow"><span class="tag">05</span> so what</div>
+    <h2>Why leave the time domain at all?</h2>
+    <p class="lead">In the time domain, x(t) is one tangled squiggle — you can't point to "the 392&nbsp;Hz part" anywhere on that curve. Every equaliser, tuner, filter, synthesizer and stability check works because someone first asked the same question you just asked with the sliders above: <i>which pure frequencies is this made of, how loud is each one, and how long does each one last?</i> That question only has a clean answer in the frequency domain — which is exactly what Fourier and Laplace hand you.</p>
+  </section>
+
+</div>
+
+<footer>x(t) → X(jω) → X(s) — same question, two lenses</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const COLORS = {
+    grid: getCss('--grid'), fourier: getCss('--fourier'), laplace: getCss('--laplace'),
+    text: getCss('--text'), muted: getCss('--muted'), roc: getCss('--roc'), red: getCss('--red')
+  };
+  function getCss(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  // ---------- state ----------
+  const noteDefs = [
+    {name:'Note 1 · Root (C4)',  amp:1.0, freq:261.63, phase:0,  alpha:1.0, active:true},
+    {name:'Note 2 · Third (E4)', amp:0.75,freq:329.63, phase:60, alpha:1.6, active:true},
+    {name:'Note 3 · Fifth (G4)', amp:0.55,freq:392.00, phase:120,alpha:2.3, active:true},
+  ];
+
+  const T = 1.6;       // seconds shown
+  const N = 1600;       // time samples
+  const dt = T / N;
+
+  function sampleSignal(useOverlay){
+    const t = new Float64Array(N);
+    const x = new Float64Array(N);
+    const per = noteDefs.map(()=> new Float64Array(N));
+    for(let i=0;i<N;i++){
+      const ti = i*dt;
+      t[i]=ti;
+      let sum=0;
+      noteDefs.forEach((n,idx)=>{
+        if(!n.active){ per[idx][i]=0; return; }
+        const val = n.amp*Math.exp(-n.alpha*ti)*Math.cos(2*Math.PI*n.freq*ti + n.phase*Math.PI/180);
+        per[idx][i]=val;
+        sum+=val;
+      });
+      x[i]=sum;
+    }
+    return {t,x,per};
+  }
+
+  // numeric Fourier sweep (finite-window integral, causal x(t) on [0,T])
+  function fourierSweep(x, t, fMax, bins){
+    const mags = new Float64Array(bins);
+    const phases = new Float64Array(bins);
+    const freqs = new Float64Array(bins);
+    for(let b=0;b<bins;b++){
+      const f = (b/(bins-1))*fMax;
+      freqs[b]=f;
+      let re=0, im=0;
+      const w = 2*Math.PI*f;
+      for(let i=0;i<N;i++){
+        const xi=x[i];
+        if(xi===0) continue;
+        re += xi*Math.cos(w*t[i]);
+        im -= xi*Math.sin(w*t[i]);
+      }
+      re*=dt; im*=dt;
+      mags[b]=Math.sqrt(re*re+im*im);
+      phases[b]=Math.atan2(im,re);
+    }
+    return {freqs,mags,phases};
+  }
+
+  // ---------- DOM: build note cards ----------
+  const notesGrid = document.getElementById('notesGrid');
+  noteDefs.forEach((n, idx)=>{
+    const card = document.createElement('div');
+    card.className='note-card';
+    card.innerHTML = `
+      <div class="note-head">
+        <div class="note-name">${n.name}</div>
+        <button class="note-toggle on" data-idx="${idx}" aria-label="toggle note"></button>
+      </div>
+      <div class="ctrl">
+        <label>amplitude <span class="val mono" data-out="amp">${n.amp.toFixed(2)}</span></label>
+        <input type="range" min="0" max="1" step="0.01" value="${n.amp}" data-p="amp">
+      </div>
+      <div class="ctrl">
+        <label>frequency (Hz) <span class="val mono" data-out="freq">${n.freq.toFixed(1)}</span></label>
+        <input type="range" min="80" max="500" step="0.5" value="${n.freq}" data-p="freq">
+      </div>
+      <div class="ctrl">
+        <label>phase (°) <span class="val mono" data-out="phase">${n.phase.toFixed(0)}</span></label>
+        <input type="range" min="0" max="360" step="1" value="${n.phase}" data-p="phase">
+      </div>
+      <div class="ctrl">
+        <label>decay rate α (1/s) <span class="val mono" data-out="alpha">${n.alpha.toFixed(2)}</span></label>
+        <input type="range" min="0" max="5" step="0.05" value="${n.alpha}" data-p="alpha">
+      </div>
+    `;
+    notesGrid.appendChild(card);
+
+    card.querySelectorAll('input[type=range]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const prop = inp.dataset.p;
+        noteDefs[idx][prop] = parseFloat(inp.value);
+        card.querySelector(`[data-out="${prop}"]`).textContent = prop==='freq' ? noteDefs[idx][prop].toFixed(1) : noteDefs[idx][prop].toFixed(2);
+        renderAll();
+      });
+    });
+    card.querySelector('.note-toggle').addEventListener('click', (e)=>{
+      noteDefs[idx].active = !noteDefs[idx].active;
+      e.target.classList.toggle('on', noteDefs[idx].active);
+      card.classList.toggle('off', !noteDefs[idx].active);
+      renderAll();
+    });
+  });
+
+  const overlayToggle = document.getElementById('overlayToggle');
+  overlayToggle.addEventListener('change', renderAll);
+
+  // ---------- canvas helpers ----------
+  function setupCanvas(cv){
+    const ratio = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || cv.parentElement.clientWidth;
+    const h = parseInt(cv.getAttribute('height'),10);
+    cv.width = w*ratio; cv.height = h*ratio;
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    return {ctx, w, h};
+  }
+
+  function drawGrid(ctx,w,h,rows,cols){
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth=1;
+    for(let i=0;i<=cols;i++){
+      const x = (i/cols)*w;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+    }
+    for(let j=0;j<=rows;j++){
+      const y = (j/rows)*h;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+  }
+
+  // ---------- time domain ----------
+  const timeCanvas = document.getElementById('timeCanvas');
+  const signalReadout = document.getElementById('signalReadout');
+
+  function drawTime(data){
+    const {ctx,w,h} = setupCanvas(timeCanvas);
+    ctx.clearRect(0,0,w,h);
+    drawGrid(ctx,w,h,4,10);
+    const mid = h/2;
+    // amplitude scale
+    let maxAbs = 0.01;
+    for(let i=0;i<N;i++) maxAbs = Math.max(maxAbs, Math.abs(data.x[i]));
+    const scale = (h*0.42)/maxAbs;
+
+    if(overlayToggle.checked){
+      const palette = ['#5CFFC2','#F2A65A','#8FBFFF'];
+      data.per.forEach((arr,idx)=>{
+        if(!noteDefs[idx].active) return;
+        ctx.strokeStyle = palette[idx%palette.length];
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth=1.3;
+        ctx.beginPath();
+        for(let i=0;i<N;i++){
+          const x = (i/(N-1))*w;
+          const y = mid - arr[i]*scale;
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      });
+      ctx.globalAlpha=1;
+    }
+
+    ctx.strokeStyle = COLORS.fourier;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(let i=0;i<N;i++){
+      const x = (i/(N-1))*w;
+      const y = mid - data.x[i]*scale;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // zero line
+    ctx.strokeStyle = COLORS.muted;
+    ctx.globalAlpha=0.4;
+    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid); ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  // ---------- fourier plots ----------
+  const magCanvas = document.getElementById('magCanvas');
+  const phaseCanvas = document.getElementById('phaseCanvas');
+  const FMAX = 550, BINS = 260;
+
+  function drawMag(spec){
+    const {ctx,w,h} = setupCanvas(magCanvas);
+    ctx.clearRect(0,0,w,h);
+    drawGrid(ctx,w,h,4,11);
+    let maxMag = 0.001;
+    for(let b=0;b<BINS;b++) maxMag = Math.max(maxMag, spec.mags[b]);
+    const scale = (h*0.85)/maxMag;
+
+    ctx.fillStyle = COLORS.fourier;
+    ctx.globalAlpha=0.85;
+    const bw = w/BINS;
+    for(let b=0;b<BINS;b++){
+      const barH = spec.mags[b]*scale;
+      ctx.fillRect(b*bw, h-barH, Math.max(bw-1,1), barH);
+    }
+    ctx.globalAlpha=1;
+
+    // annotate true note frequencies with labels
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.fillStyle = COLORS.text;
+    noteDefs.forEach(n=>{
+      if(!n.active) return;
+      const bx = (n.freq/FMAX)*w;
+      ctx.strokeStyle = COLORS.muted;
+      ctx.globalAlpha=0.5;
+      ctx.beginPath(); ctx.moveTo(bx,0); ctx.lineTo(bx,h); ctx.stroke();
+      ctx.globalAlpha=1;
+      ctx.fillText(n.freq.toFixed(0)+' Hz', Math.min(bx+4, w-58), 14);
+    });
+
+    // x-axis labels
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = "10px 'JetBrains Mono', monospace";
+    for(let f=0; f<=FMAX; f+=100){
+      const x=(f/FMAX)*w;
+      ctx.fillText(f+'', x+2, h-4);
+    }
+  }
+
+  function drawPhase(spec){
+    const {ctx,w,h} = setupCanvas(phaseCanvas);
+    ctx.clearRect(0,0,w,h);
+    drawGrid(ctx,w,h,4,11);
+    const mid = h/2;
+    let maxMag=0.001;
+    for(let b=0;b<BINS;b++) maxMag=Math.max(maxMag, spec.mags[b]);
+
+    for(let b=0;b<BINS-1;b++){
+      const x1=(b/(BINS-1))*w, x2=((b+1)/(BINS-1))*w;
+      const y1= mid - (spec.phases[b]/Math.PI)*mid*0.9;
+      const y2= mid - (spec.phases[b+1]/Math.PI)*mid*0.9;
+      const alpha = Math.min(1, (spec.mags[b]/maxMag)*1.6 + 0.05);
+      ctx.strokeStyle = COLORS.fourier;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth=1.8;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    ctx.strokeStyle=COLORS.muted; ctx.globalAlpha=0.4;
+    ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(w,mid); ctx.stroke();
+    ctx.globalAlpha=1;
+    ctx.fillStyle=COLORS.muted; ctx.font="10px 'JetBrains Mono', monospace";
+    ctx.fillText('+π', 4, 12); ctx.fillText('0', 4, mid+4); ctx.fillText('−π', 4, h-4);
+  }
+
+  // ---------- s-plane ----------
+  const splaneCanvas = document.getElementById('splaneCanvas');
+  const poleReadout = document.getElementById('poleReadout');
+
+  function drawSplane(){
+    const {ctx,w,h} = setupCanvas(splaneCanvas);
+    ctx.clearRect(0,0,w,h);
+
+    const activeNotes = noteDefs.filter(n=>n.active);
+    const maxOmega = Math.max(400, ...activeNotes.map(n=>2*Math.PI*n.freq)) * 1.25;
+    const maxAlpha = Math.max(2.5, ...activeNotes.map(n=>n.alpha)) * 1.4;
+    const sigMin = -maxAlpha, sigMax = maxAlpha*0.3;
+
+    function X(sigma){ return ((sigma - sigMin)/(sigMax - sigMin)) * w; }
+    function Y(omega){ return h/2 - (omega/maxOmega) * (h/2*0.92); }
+
+    drawGrid(ctx,w,h,8,10);
+
+    // ROC shading: region to the right of rightmost pole (min alpha => least negative sigma)
+    const minAlpha = activeNotes.length ? Math.min(...activeNotes.map(n=>n.alpha)) : 0;
+    const rocX = X(-minAlpha);
+    ctx.fillStyle = COLORS.roc;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(rocX, 0, w-rocX, h);
+    ctx.globalAlpha = 1;
+
+    // jw axis
+    const zeroX = X(0);
+    ctx.strokeStyle = COLORS.muted;
+    ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(zeroX,0); ctx.lineTo(zeroX,h); ctx.stroke();
+    // sigma axis
+    const zeroY = Y(0);
+    ctx.beginPath(); ctx.moveTo(0,zeroY); ctx.lineTo(w,zeroY); ctx.stroke();
+
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.fillText('jω', zeroX+6, 14);
+    ctx.fillText('σ', w-16, zeroY-6);
+    ctx.fillText('ROC: Re(s) > −'+minAlpha.toFixed(2), Math.min(rocX+8,w-160), h-10);
+
+    // poles
+    const palette = ['#5CFFC2','#F2A65A','#8FBFFF'];
+    let readoutHTML='';
+    noteDefs.forEach((n,idx)=>{
+      if(!n.active) return;
+      const omega = 2*Math.PI*n.freq;
+      const col = COLORS.laplace;
+      [omega,-omega].forEach(om=>{
+        const px = X(-n.alpha), py = Y(om);
+        ctx.strokeStyle = col;
+        ctx.lineWidth=2.2;
+        ctx.beginPath();
+        ctx.moveTo(px-6,py-6); ctx.lineTo(px+6,py+6);
+        ctx.moveTo(px-6,py+6); ctx.lineTo(px+6,py-6);
+        ctx.stroke();
+      });
+      readoutHTML += `<span class="readout"><b style="color:${palette[idx%3]}">${n.name.split('·')[0].trim()}</b>: pole at s = −${n.alpha.toFixed(2)} ± j${omega.toFixed(0)} &nbsp;(f=${n.freq.toFixed(0)}Hz, α=${n.alpha.toFixed(2)})</span>`;
+    });
+    poleReadout.innerHTML = readoutHTML || '<span class="readout">no active notes</span>';
+  }
+
+  // ---------- hero mini scope (decorative, ambient) ----------
+  const heroCanvas = document.getElementById('heroScope');
+  let heroPhase=0;
+  function drawHero(){
+    const {ctx,w,h} = setupCanvas(heroCanvas);
+    ctx.clearRect(0,0,w,h);
+    drawGrid(ctx,w,h,3,16);
+    const mid=h/2;
+    ctx.strokeStyle = COLORS.fourier;
+    ctx.lineWidth=1.8;
+    ctx.beginPath();
+    for(let x=0;x<w;x++){
+      const tt = x/w*6 + heroPhase;
+      const y = mid - (Math.sin(tt*2.2)*0.5 + Math.sin(tt*3.3+1)*0.3 + Math.sin(tt*4.9+2)*0.2)*(h*0.32)*Math.exp(-((x/w))*0.6);
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  function heroLoop(){
+    heroPhase += 0.012;
+    drawHero();
+    if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      requestAnimationFrame(heroLoop);
+    }
+  }
+
+  // ---------- audio ----------
+  let actx=null;
+  document.getElementById('playBtn').addEventListener('click', ()=>{
+    if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+    const now = actx.currentTime;
+    const master = actx.createGain();
+    master.gain.value = 0.28;
+    master.connect(actx.destination);
+    noteDefs.forEach(n=>{
+      if(!n.active || n.amp<=0) return;
+      const osc = actx.createOscillator();
+      osc.type='sine';
+      osc.frequency.value = n.freq;
+      const g = actx.createGain();
+      const dur = 3.0;
+      const steps = 200;
+      const curve = new Float32Array(steps);
+      for(let i=0;i<steps;i++){
+        const tt = (i/(steps-1))*dur;
+        curve[i] = Math.max(n.amp*Math.exp(-n.alpha*tt), 0.0001);
+      }
+      g.gain.setValueCurveAtTime(curve, now, dur);
+      osc.connect(g); g.connect(master);
+      osc.start(now);
+      osc.stop(now+dur+0.05);
+    });
+  });
+
+  // ---------- render orchestration ----------
+  function renderAll(){
+    const data = sampleSignal();
+    drawTime(data);
+    const spec = fourierSweep(data.x, data.t, FMAX, BINS);
+    drawMag(spec);
+    drawPhase(spec);
+    drawSplane();
+
+    let maxMag=0, peakF=0;
+    for(let b=0;b<BINS;b++){ if(spec.mags[b]>maxMag){maxMag=spec.mags[b]; peakF=spec.freqs[b];} }
+    signalReadout.textContent = `strongest detected peak ≈ ${peakF.toFixed(0)} Hz`;
+  }
+
+  window.addEventListener('resize', ()=>{ renderAll(); drawHero(); });
+
+  renderAll();
+  heroLoop();
+})();
+</script>
+<a href="../index.html" style="position:fixed;left:14px;bottom:14px;z-index:99999;font:600 13px system-ui,sans-serif;background:rgba(10,14,22,.88);color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer">&larr; Mathematics Lab</a>
+</body>
+</html>

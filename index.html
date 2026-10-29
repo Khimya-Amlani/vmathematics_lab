@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mathematics Lab in Action</title>
+<meta name="description" content="Six interactive simulations that show engineering mathematics working: Fourier series and transforms, Laplace transforms, the s-plane bridge between them, active noise cancellation, SVD image compression and orthogonal trajectories.">
+<meta property="og:title" content="Mathematics Lab in Action">
+<meta property="og:description" content="Interactive simulations and visualizations of engineering mathematics. No install, runs in any browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070a10; --panel:#0e131c; --panel2:#121926; --line:rgba(255,255,255,.08);
+  --ink:#e9edf3; --muted:#8d98a8; --dim:#5d6878;
+  --f:#5cffc2; --l:#f2a65a; --a:#ff5e57; --s:#7aa7ff; --o:#c49bff;
+  --serif:"Instrument Serif",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* HERO */
+.hero{position:relative;min-height:92vh;display:grid;grid-template-columns:1.05fr 1fr;align-items:center;gap:30px;padding:60px 0 40px}
+@media(max-width:900px){.hero{grid-template-columns:1fr;min-height:0;padding-top:40px}}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--f);display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:28px;height:1px;background:var(--f)}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(46px,7.4vw,96px);line-height:.95;letter-spacing:-.02em;margin:18px 0 20px}
+h1 i{color:var(--l)}
+.lede{font-size:18px;color:var(--muted);max-width:520px}
+.lede b{color:var(--ink);font-weight:500}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.btn{font:500 14px var(--sans);padding:12px 20px;border-radius:999px;text-decoration:none;border:1px solid var(--line);transition:.2s}
+.btn.p{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.p:hover{background:var(--f);border-color:var(--f)}
+.btn:not(.p):hover{border-color:var(--muted)}
+.stage{position:relative;aspect-ratio:1/1;max-height:560px;width:100%}
+#epi{width:100%;height:100%;display:block}
+.stage-cap{position:absolute;left:0;right:0;bottom:-6px;text-align:center;font:12px var(--mono);color:var(--dim)}
+.stage-ctrl{position:absolute;top:6px;right:6px;display:flex;gap:6px}
+.stage-ctrl button{font:500 12px var(--mono);background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer}
+.stage-ctrl button[aria-pressed="true"]{color:var(--bg);background:var(--f);border-color:var(--f)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:30px 0 0}
+.stat{padding:22px 18px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font:400 40px/1 var(--serif);color:var(--ink)}
+.stat span{font-size:13px;color:var(--muted)}
+@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+/* SECTION */
+section{padding:90px 0 20px}
+.sh{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:34px}
+h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,4.6vw,56px);line-height:1;letter-spacing:-.01em}
+h2 i{color:var(--f)}
+.sh p{color:var(--muted);max-width:430px;font-size:15px}
+
+/* JOURNEY */
+.journey{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+@media(max-width:900px){.journey{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.journey{grid-template-columns:1fr}}
+.stop{position:relative;padding:22px 20px 24px;border:1px solid var(--line);margin:-1px 0 0 -1px;background:var(--panel);text-decoration:none;display:flex;flex-direction:column;gap:10px;transition:background .25s}
+.stop:hover{background:var(--panel2)}
+.stop .n{font:500 11px var(--mono);letter-spacing:.18em;color:var(--c)}
+.stop h3{font:600 19px var(--sans);letter-spacing:-.01em}
+.stop .eq{font:13px var(--mono);color:var(--c);opacity:.9}
+.stop p{font-size:14px;color:var(--muted)}
+.stop canvas{width:100%;height:90px;display:block;border-radius:6px;background:#0a0e15}
+.stop .go{margin-top:auto;font:500 13px var(--mono);color:var(--ink)}
+.stop .go::after{content:" →";transition:margin .2s}
+.stop:hover .go::after{margin-left:4px}
+.stop .q{font-size:13px;color:var(--ink);border-left:2px solid var(--c);padding-left:10px;font-style:italic}
+
+/* MORE */
+.more{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.more{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden;text-decoration:none;display:grid;grid-template-columns:200px 1fr;transition:border-color .25s}
+@media(max-width:520px){.card{grid-template-columns:1fr}}
+.card:hover{border-color:var(--c)}
+.card canvas{width:100%;height:100%;min-height:170px;display:block;background:#0a0e15}
+.card .tx{padding:20px;display:flex;flex-direction:column;gap:8px}
+.card .n{font:500 11px var(--mono);letter-spacing:.18em;color:var(--c)}
+.card h3{font:600 19px var(--sans)}
+.card p{font-size:14px;color:var(--muted)}
+.card .go{margin-top:auto;font:500 13px var(--mono)}
+.card .go::after{content:" →"}
+
+/* BIG IDEA */
+.idea{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+@media(max-width:860px){.idea{grid-template-columns:1fr}}
+.idea p{color:var(--muted);font-size:16px;margin-bottom:14px}
+.idea p b{color:var(--ink);font-weight:500}
+#splane{width:100%;aspect-ratio:1.15/1;display:block;border-radius:14px;background:var(--panel);border:1px solid var(--line);cursor:crosshair;touch-action:none}
+.sread{font:13px var(--mono);color:var(--muted);margin-top:10px;min-height:42px}
+.sread b{color:var(--l);font-weight:500}
+
+/* MAP */
+.map{width:100%;border-collapse:collapse;font-size:14px}
+.map th,.map td{text-align:left;padding:14px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.map th{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.map td:first-child{font-weight:600;white-space:nowrap}
+.map td{color:var(--muted)}
+.tbl{overflow-x:auto}
+
+footer{padding:80px 0 50px;border-top:1px solid var(--line);margin-top:90px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px}
+footer b{color:var(--ink);font-weight:500}
+.mono{font-family:var(--mono)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div>
+    <div class="eyebrow">Interactive simulations · Engineering Mathematics</div>
+    <h1>Mathematics<br>Lab in <i>Action</i></h1>
+    <p class="lede">Every sound you hear, every circuit that settles, every photo you send is mathematics at work. These six labs let you <b>build a signal, take it apart, test its stability, cancel its noise and compress it</b>, and watch the equations respond as you move each slider.</p>
+    <div class="cta">
+      <a class="btn p" href="#journey">Start the journey</a>
+      <a class="btn" href="#idea">The big idea</a>
+    </div>
+  </div>
+  <div class="stage">
+    <canvas id="epi" aria-label="Rotating circles drawing a waveform: a Fourier series being built term by term"></canvas>
+    <div class="stage-ctrl" role="group" aria-label="Waveform">
+      <button data-w="sq" aria-pressed="true">square</button>
+      <button data-w="saw" aria-pressed="false">sawtooth</button>
+      <button data-w="tri" aria-pressed="false">triangle</button>
+    </div>
+    <div class="stage-cap" id="epicap">Square wave from 6 spinning circles: f(t) = Σ (4/nπ) sin(nt), n odd</div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>6</b><span>interactive labs</span></div>
+  <div class="stat"><b>40+</b><span>live sliders, toggles and inputs</span></div>
+  <div class="stat"><b>0</b><span>installs. Runs in any browser</span></div>
+  <div class="stat"><b>1</b><span>story: from a signal to silence</span></div>
+</div>
+
+<!-- ============ JOURNEY ============ -->
+<section id="journey">
+  <div class="sh">
+    <h2>The journey of a <i>signal</i></h2>
+    <p>Follow one idea through four labs. Each one answers a question the previous one raised.</p>
+  </div>
+  <div class="journey">
+    <a class="stop" href="labs/fourier.html" style="--c:var(--f)">
+      <span class="n">01 · DECOMPOSE</span>
+      <h3>Fourier Lab</h3>
+      <canvas data-anim="fourier"></canvas>
+      <span class="eq">f(x) = a₀/2 + Σ aₙcos nx + bₙsin nx</span>
+      <p class="q">What pure waves is this shape made of?</p>
+      <p>Type any f(x). Watch the series build term by term, see the Gibbs overshoot, then switch to the Fourier transform.</p>
+      <span class="go">Open lab</span>
+    </a>
+    <a class="stop" href="labs/laplace.html" style="--c:var(--l)">
+      <span class="n">02 · STABILISE</span>
+      <h3>Laplace Explorer</h3>
+      <canvas data-anim="laplace"></canvas>
+      <span class="eq">F(s) = ∫₀^∞ f(t) e<sup>−st</sup> dt</span>
+      <p class="q">Will this system settle, ring or blow up?</p>
+      <p>Drag poles across the s-plane and watch step responses change. Includes an f(t) ⇄ F(s) calculator.</p>
+      <span class="go">Open lab</span>
+    </a>
+    <a class="stop" href="labs/laplace-vs-fourier.html" style="--c:var(--s)">
+      <span class="n">03 · CONNECT</span>
+      <h3>Laplace vs Fourier</h3>
+      <canvas data-anim="bridge"></canvas>
+      <span class="eq">X(jω) = X(s) |<sub>s = jω</sub></span>
+      <p class="q">How are the two transforms the same thing?</p>
+      <p>Build a decaying musical chord. Fourier finds the notes by searching; Laplace finds them as poles.</p>
+      <span class="go">Open lab</span>
+    </a>
+    <a class="stop" href="labs/anc.html" style="--c:var(--a)">
+      <span class="n">04 · APPLY</span>
+      <h3>Active Noise Cancellation</h3>
+      <canvas data-anim="anc"></canvas>
+      <span class="eq">s + n + (−n) = s</span>
+      <p class="q">Can mathematics make noise disappear?</p>
+      <p>A 3D earbud, live waveforms, and an audio lab where you hear the noise and then hear it vanish.</p>
+      <span class="go">Open lab</span>
+    </a>
+  </div>
+</section>
+
+<!-- ============ BIG IDEA ============ -->
+<section id="idea">
+  <div class="idea">
+    <div>
+      <div class="eyebrow" style="color:var(--l)">The big idea</div>
+      <h2 style="margin:16px 0 22px">Fourier lives on <i>one line</i> of the Laplace plane</h2>
+      <p>The Laplace transform tests a signal against <b>e<sup>−st</sup></b>, where s = σ + jω is a point anywhere in a plane. The Fourier transform tests it only against <b>e<sup>−jωt</sup></b>: the points where σ = 0, the vertical axis.</p>
+      <p>So the Fourier spectrum is literally a <b>slice</b> through the Laplace surface. The poles of a system sit to the left of that slice; the closer they are, the taller and sharper the Fourier peak.</p>
+      <p><b>Try it:</b> drag the pole on the right. Move it toward the axis and watch the spectrum peak sharpen. Cross the axis and the system goes unstable.</p>
+    </div>
+    <div>
+      <canvas id="splane" aria-label="Draggable pole on the s-plane with its Fourier magnitude spectrum along the imaginary axis"></canvas>
+      <div class="sread" id="sread"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BEYOND ============ -->
+<section id="beyond">
+  <div class="sh">
+    <h2>Beyond <i>signals</i></h2>
+    <p>The same habits of thought, vectors, perpendicularity and decomposition, show up in geometry and in images.</p>
+  </div>
+  <div class="more">
+    <a class="card" href="labs/svd.html" style="--c:var(--o)">
+      <canvas data-anim="svd"></canvas>
+      <div class="tx">
+        <span class="n">05 · COMPRESS</span>
+        <h3>SVD Image Compression</h3>
+        <span class="mono" style="font-size:13px;color:var(--o)">A = U Σ Vᵀ ≈ Σₖ σₖ uₖ vₖᵀ</span>
+        <p>An image is a matrix. Keep only the largest singular values and watch it rebuild from a blur to a sharp copy with a fraction of the numbers.</p>
+        <span class="go">Open lab</span>
+      </div>
+    </a>
+    <a class="card" href="labs/orthogonal-trajectories.html" style="--c:#8fd3ff">
+      <canvas data-anim="ortho"></canvas>
+      <div class="tx">
+        <span class="n">06 · INTERSECT</span>
+        <h3>Orthogonal Trajectories</h3>
+        <span class="mono" style="font-size:13px;color:#8fd3ff">y′ → −1/y′</span>
+        <p>A six-step chalkboard demo: why electric field lines cross equipotentials at exactly 90°, with a draggable live slope check.</p>
+        <span class="go">Open lab</span>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- ============ MAP ============ -->
+<section id="map">
+  <div class="sh">
+    <h2>Where each lab <i>shows up</i></h2>
+    <p>The mathematics in these labs runs inside everyday engineering.</p>
+  </div>
+  <div class="tbl">
+  <table class="map">
+    <tr><th>Lab</th><th>Mathematics</th><th>Simulates</th><th>Real-world use</th></tr>
+    <tr><td style="color:var(--f)">Fourier Lab</td><td>Fourier series, half-range series, Fourier transform</td><td>Partial sums, Gibbs effect, coefficient decay, spectrum</td><td>Audio equalisers, MP3, spectrum analysers</td></tr>
+    <tr><td style="color:var(--l)">Laplace Explorer</td><td>Laplace transform, poles, inverse transform</td><td>First and second-order step responses, damping, stability</td><td>RC filters, sensors, control loops, PLLs</td></tr>
+    <tr><td style="color:var(--s)">Laplace vs Fourier</td><td>s-plane, region of convergence, jω-axis</td><td>Decaying chord: spectrum peaks vs pole positions</td><td>Instrument tuners, modal analysis</td></tr>
+    <tr><td style="color:var(--a)">Active Noise Cancellation</td><td>Vector negation, superposition, LMS idea</td><td>Destructive interference with live audio</td><td>ANC earbuds, aviation headsets</td></tr>
+    <tr><td style="color:var(--o)">SVD Compression</td><td>Singular value decomposition, low-rank approximation</td><td>Rank-k image reconstruction</td><td>Image compression, recommendation systems, face recognition</td></tr>
+    <tr><td style="color:#8fd3ff">Orthogonal Trajectories</td><td>First-order ODEs, slopes of perpendicular curves</td><td>Field lines vs equipotentials, other curve families</td><td>Electrostatics, fluid flow, heat flow</td></tr>
+  </table>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <b>Mathematics Lab in Action</b><br>
+    <!-- EDIT: replace with your own credits -->
+    Developed by <b>Your Name</b> · Guided by <b>Faculty Name</b><br>
+    Department · Institution
+  </div>
+  <div class="mono" style="font-size:12px;text-align:right">
+    Pure HTML, CSS and JavaScript<br>No installs · works on phone and desktop
+  </div>
+</footer>
+</div>
+
+<script>
+(function(){
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = {f:'#5cffc2',l:'#f2a65a',a:'#ff5e57',s:'#7aa7ff',o:'#c49bff',ink:'#e9edf3',dim:'#3a4454',grid:'rgba(255,255,255,.06)'};
+function fit(cv){const d=devicePixelRatio||1,r=cv.getBoundingClientRect();cv.width=Math.max(1,r.width*d);cv.height=Math.max(1,r.height*d);const x=cv.getContext('2d');x.setTransform(d,0,0,d,0,0);return {x,w:r.width,h:r.height};}
+
+/* ---------- HERO: Fourier epicycles ---------- */
+const epi=document.getElementById('epi'), cap=document.getElementById('epicap');
+let wave='sq', trail=[], T=0;
+const WAVES={
+  sq:{terms:n=>{const a=[];for(let k=1;a.length<6;k+=2)a.push({n:k,r:4/(k*Math.PI)});return a},cap:'Square wave from 6 spinning circles: f(t) = Σ (4/nπ) sin(nt), n odd'},
+  saw:{terms:()=>{const a=[];for(let k=1;k<=7;k++)a.push({n:k,r:(2/(k*Math.PI))*(k%2?1:-1)});return a},cap:'Sawtooth from 7 circles: f(t) = Σ (2/nπ)(−1)ⁿ⁺¹ sin(nt)'},
+  tri:{terms:()=>{const a=[];for(let k=1;a.length<5;k+=2)a.push({n:k,r:(8/(Math.PI*Math.PI*k*k))*((k-1)/2%2?-1:1)});return a},cap:'Triangle from 5 circles: coefficients shrink like 1/n², so it converges fast'}
+};
+document.querySelectorAll('.stage-ctrl button').forEach(b=>b.onclick=()=>{
+  wave=b.dataset.w;trail=[];document.querySelectorAll('.stage-ctrl button').forEach(x=>x.setAttribute('aria-pressed',x===b));cap.textContent=WAVES[wave].cap;
+});
+function drawEpi(){
+  const {x,w,h}=fit(epi);
+  const terms=WAVES[wave].terms(), S=Math.min(w,h)*0.16;
+  const cx=w*0.3, cy=h*0.48;
+  let px=cx, py=cy;
+  terms.forEach((t,i)=>{
+    const r=Math.abs(t.r)*S, ang=t.n*T+(t.r<0?Math.PI:0);
+    x.strokeStyle='rgba(255,255,255,'+(0.22-i*0.025)+')';x.lineWidth=1;
+    x.beginPath();x.arc(px,py,r,0,Math.PI*2);x.stroke();
+    const nx=px+r*Math.cos(ang), ny=py-r*Math.sin(ang);
+    x.strokeStyle=i===0?C.l:'rgba(242,166,90,.65)';x.lineWidth=1.6;
+    x.beginPath();x.moveTo(px,py);x.lineTo(nx,ny);x.stroke();
+    px=nx;py=ny;
+  });
+  trail.unshift(py); const maxL=Math.floor(w*0.48); if(trail.length>maxL)trail.length=maxL;
+  const x0=w*0.5;
+  x.strokeStyle='rgba(255,255,255,.25)';x.setLineDash([3,4]);x.beginPath();x.moveTo(px,py);x.lineTo(x0,py);x.stroke();x.setLineDash([]);
+  x.strokeStyle=C.dim;x.beginPath();x.moveTo(x0,cy);x.lineTo(w,cy);x.stroke();
+  x.strokeStyle=C.f;x.lineWidth=2.4;x.shadowColor=C.f;x.shadowBlur=10;x.beginPath();
+  trail.forEach((y,i)=>i?x.lineTo(x0+i,y):x.moveTo(x0,y));x.stroke();x.shadowBlur=0;
+  x.fillStyle=C.f;x.beginPath();x.arc(px,py,4,0,Math.PI*2);x.fill();
+  T+=0.022;
+}
+
+/* ---------- Card mini-animations ---------- */
+const minis=[...document.querySelectorAll('canvas[data-anim]')];
+let mt=0;
+const svdImg=(()=>{const n=24,a=[];for(let i=0;i<n;i++){a[i]=[];for(let j=0;j<n;j++){const r=Math.hypot(i-11.5,j-11.5);a[i][j]=r<9?0.85:0.15;if(Math.hypot(i-8,j-8)<2||Math.hypot(i-8,j-15)<2)a[i][j]=0.1;if(i>13&&i<16&&Math.abs(j-11.5)<5)a[i][j]=0.1}}return a})();
+function drawMini(cv){
+  const {x,w,h}=fit(cv), k=cv.dataset.anim, m=h/2;
+  x.clearRect(0,0,w,h);
+  x.strokeStyle=C.grid;x.lineWidth=1;x.beginPath();x.moveTo(0,m);x.lineTo(w,m);x.stroke();
+  const line=(fn,col,lw,dash)=>{x.strokeStyle=col;x.lineWidth=lw;x.setLineDash(dash||[]);x.beginPath();for(let i=0;i<=w;i+=2){const y=m-fn(i/w)*h*0.38;i?x.lineTo(i,y):x.moveTo(i,y)}x.stroke();x.setLineDash([])};
+  if(k==='fourier'){
+    const N=1+Math.floor((mt*0.6)%9)*2;
+    line(t=>Math.sign(Math.sin(t*4*Math.PI)),'rgba(255,255,255,.25)',1.2,[4,4]);
+    line(t=>{let s=0;for(let n=1;n<=N;n+=2)s+=4/(n*Math.PI)*Math.sin(n*t*4*Math.PI);return s*0.8},C.f,2);
+    x.fillStyle=C.f;x.font='11px IBM Plex Mono';x.fillText('N = '+N,8,14);
+  }else if(k==='laplace'){
+    const z=0.15+0.35*(0.5+0.5*Math.sin(mt*0.5)), wn=14;
+    line(t=>{const tt=t*1.2,wd=wn*Math.sqrt(1-z*z);return 2*(1-Math.exp(-z*wn*tt)*(Math.cos(wd*tt)+z/Math.sqrt(1-z*z)*Math.sin(wd*tt)))-1.1},C.l,2);
+    line(()=>0.9,'rgba(255,255,255,.2)',1,[3,3]);
+    x.fillStyle=C.l;x.font='11px IBM Plex Mono';x.fillText('ζ = '+z.toFixed(2),8,14);
+  }else if(k==='bridge'){
+    const a=1.5+1.2*Math.sin(mt*0.5);
+    line(t=>Math.exp(-a*t*2)*Math.cos(t*40+mt*3)*1.1,C.s,1.6);
+  }else if(k==='anc'){
+    const p=mt*2;
+    line(t=>0.7*Math.sin(t*14+p),C.a,1.6);
+    line(t=>-0.7*Math.sin(t*14+p),C.s,1.6,[5,4]);
+    line(()=>0,C.f,2.4);
+  }else if(k==='svd'){
+    const kk=1+Math.floor((mt*0.5)%6), n=24, cs=Math.min(w,h)/n*0.8, ox=(w-cs*n)/2, oy=(h-cs*n)/2;
+    const blur=Math.max(0,4-kk);
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){let v=0,c=0;for(let di=-blur;di<=blur;di++)for(let dj=-blur;dj<=blur;dj++){const a=svdImg[i+di],b=a&&a[j+dj];if(b!==undefined){v+=b;c++}}v/=c;const g=Math.round(v*230);x.fillStyle=`rgb(${g},${g},${Math.min(255,g+25)})`;x.fillRect(ox+j*cs,oy+i*cs,cs+.5,cs+.5)}
+    x.fillStyle=C.o;x.font='11px IBM Plex Mono';x.fillText('k = '+[1,2,4,8,16,24][kk-1],8,14);
+  }else if(k==='ortho'){
+    const cx=w/2,cy=h/2,s=Math.min(w,h)/10;
+    x.strokeStyle='rgba(143,211,255,.8)';x.lineWidth=1.4;
+    for(let r=1;r<=6;r++){x.beginPath();x.arc(cx,cy,r*s,0,Math.PI*2);x.stroke()}
+    x.strokeStyle='rgba(255,179,107,.85)';
+    for(let i=0;i<12;i++){const th=i*Math.PI/6+mt*0.1;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(th)*w,cy+Math.sin(th)*w);x.stroke()}
+  }
+}
+
+/* ---------- Big idea: draggable pole + spectrum ---------- */
+const sp=document.getElementById('splane'), sread=document.getElementById('sread');
+let pole={s:-0.6,w:2.2}, drag=false;
+function drawS(){
+  const {x,w,h}=fit(sp);
+  const half=w*0.56, X=s=>half*0.75+(s/4)*half*0.7, Y=o=>h/2-(o/4)*h*0.45;
+  x.clearRect(0,0,w,h);
+  // RHP shade
+  x.fillStyle='rgba(255,94,87,.07)';x.fillRect(X(0),0,half-X(0),h);
+  x.strokeStyle=C.grid;for(let i=-4;i<=1;i++){x.beginPath();x.moveTo(X(i),0);x.lineTo(X(i),h);x.stroke()}
+  for(let i=-4;i<=4;i++){x.beginPath();x.moveTo(0,Y(i));x.lineTo(half,Y(i));x.stroke()}
+  x.strokeStyle='rgba(255,255,255,.3)';x.beginPath();x.moveTo(0,Y(0));x.lineTo(half,Y(0));x.stroke();
+  // jw axis highlighted
+  x.strokeStyle=C.f;x.lineWidth=2.5;x.shadowColor=C.f;x.shadowBlur=8;x.beginPath();x.moveTo(X(0),0);x.lineTo(X(0),h);x.stroke();x.shadowBlur=0;x.lineWidth=1;
+  x.fillStyle=C.f;x.font='12px IBM Plex Mono';x.fillText('jω  (Fourier)',X(0)+6,16);
+  x.fillStyle='rgba(255,255,255,.45)';x.fillText('σ',half-14,Y(0)-6);
+  x.fillStyle='rgba(255,94,87,.6)';x.fillText('unstable',X(0)+6,h-10);
+  x.fillStyle='rgba(92,255,194,.5)';x.fillText('stable',8,h-10);
+  // poles
+  [pole.w,-pole.w].forEach((o,i)=>{const px=X(pole.s),py=Y(o);x.strokeStyle=C.l;x.lineWidth=3;x.beginPath();x.moveTo(px-8,py-8);x.lineTo(px+8,py+8);x.moveTo(px-8,py+8);x.lineTo(px+8,py-8);x.stroke();
+    if(i===0){x.strokeStyle='rgba(242,166,90,.35)';x.lineWidth=1;x.setLineDash([3,4]);x.beginPath();x.moveTo(px,py);x.lineTo(X(0),py);x.stroke();x.setLineDash([])}});
+  // spectrum panel: |H(jw)| for H = 1/((s-p)(s-p*)), rotated to share omega axis
+  const sx0=half+18, sw=w-sx0-10;
+  x.strokeStyle='rgba(255,255,255,.12)';x.strokeRect(sx0,4,sw,h-8);
+  x.fillStyle='rgba(255,255,255,.45)';x.font='12px IBM Plex Mono';x.fillText('|X(jω)|',sx0+8,18);
+  const mag=o=>{const a=pole.s,b=pole.w;const r1=Math.hypot(-a,o-b),r2=Math.hypot(-a,o+b);return 1/(r1*r2)};
+  let mx=0;for(let o=-4;o<=4;o+=0.02)mx=Math.max(mx,mag(o));
+  const cap=Math.min(mx,mag(pole.w)||mx);
+  x.strokeStyle=C.f;x.lineWidth=2.2;x.shadowColor=C.f;x.shadowBlur=pole.s>-0.15?14:4;x.beginPath();
+  for(let o=-4,i=0;o<=4;o+=0.02,i++){const v=Math.min(mag(o)/mx,1);const px=sx0+6+v*(sw-14),py=Y(o);i?x.lineTo(px,py):x.moveTo(px,py)}
+  x.stroke();x.shadowBlur=0;
+  // guide lines linking pole height to peak
+  x.strokeStyle='rgba(242,166,90,.35)';x.setLineDash([3,4]);x.beginPath();x.moveTo(X(0),Y(pole.w));x.lineTo(sx0+sw,Y(pole.w));x.stroke();x.setLineDash([]);
+  const st=pole.s<-0.03?'<b style="color:var(--f)">stable</b>: pole in the left half-plane, the note decays':Math.abs(pole.s)<=0.03?'<b>marginal</b>: pole on the jω-axis, a tone that never dies (infinite Fourier peak)':'<b style="color:var(--a)">unstable</b>: pole in the right half-plane, the signal grows; Fourier integral diverges';
+  sread.innerHTML=`pole s = ${pole.s.toFixed(2)} ± j${pole.w.toFixed(2)} &nbsp;·&nbsp; decay α = ${(-pole.s).toFixed(2)}, pitch ω₀ = ${pole.w.toFixed(2)}<br>${st}`;
+}
+function setPole(e){
+  const r=sp.getBoundingClientRect(), w=r.width, h=r.height, half=w*0.56;
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  if(mx>half)return;
+  pole.s=Math.max(-3.8,Math.min(1,((mx-half*0.75)/(half*0.7))*4));
+  pole.w=Math.max(0.3,Math.min(3.9,Math.abs(((h/2-my)/(h*0.45))*4)));
+  drawS();
+}
+sp.addEventListener('pointerdown',e=>{drag=true;sp.setPointerCapture(e.pointerId);setPole(e)});
+sp.addEventListener('pointermove',e=>{if(drag)setPole(e)});
+sp.addEventListener('pointerup',()=>drag=false);
+sp.addEventListener('pointercancel',()=>drag=false);
+
+/* ---------- loop ---------- */
+let visible=new Set();
+const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?visible.add(e.target):visible.delete(e.target)),{rootMargin:'60px'});
+[epi,...minis].forEach(c=>io.observe(c));
+function loop(){
+  if(visible.has(epi))drawEpi();
+  minis.forEach(c=>{if(visible.has(c))drawMini(c)});
+  mt+=0.016;
+  if(!reduce)requestAnimationFrame(loop);
+}
+function redrawAll(){drawS();minis.forEach(drawMini);if(reduce){for(let i=0;i<300;i++){T+=0.022;}drawEpi()}}
+addEventListener('resize',redrawAll);
+drawS(); minis.forEach(drawMini);
+if(reduce){for(let i=0;i<400;i++)drawEpi()} else loop();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,905 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Fourier Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Fourier Lab — bench-instrument styling: anodised chassis, dark scope screens, channel-coloured traces */
+:root{
+  color-scheme:light;
+  /* chassis */
+  --page:#CBD0D4; --face:#E7E9EB; --face2:#DEE1E4; --text:#1B2025; --text2:#545D66; --rule:#B6BDC3;
+  --bezel:#242A30; --key-hi:#F6F7F8; --key-lo:#D6DADE; --key-edge:#959DA5; --teal:#0D6A74; --teal-hi:#118490;
+  --paper:#F7F8F6; --danger:#A8221B;
+  /* screen (read by the canvas code) */
+  --panel:#0F1C22; --grid:rgba(140,178,188,.13); --line:rgba(170,206,216,.38); --muted:#8AA3AB; --ink:#E4EEF0;
+  --given:#F5C518; --sum:#2BC4EE; --alt:#EE5BA6; --target:#7D939A; --pos:#3FD08A; --neg:#FF6B5E;
+  --acc-bg:rgba(43,196,238,.15); --acc-ink:#8FDCF4;
+  --f-ui:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-math:"STIX Two Text", "Cambria Math", "Times New Roman", serif;
+  --f-code:"IBM Plex Mono", ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--text);font:400 15px/1.55 var(--f-ui);margin:0;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 18px 56px;display:flex;flex-direction:column;gap:16px}
+
+/* nameplate */
+header{background:var(--bezel);color:#EEF2F4;border-radius:10px;padding:16px 20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(0,0,0,.18)}
+h1{margin:0;font:800 30px/1 var(--f-ui);font-stretch:125%;letter-spacing:.01em}
+.tag{margin:6px 0 0;font-size:14px;color:#A9B4BC;font-stretch:95%}
+.modes{display:flex;gap:4px;padding:4px;border-radius:8px;background:#151A1F;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+.modes button{font:600 14px/1 var(--f-ui);font-stretch:90%;padding:10px 16px;border-radius:5px;border:0;cursor:pointer;color:#C7D0D6;background:transparent}
+.modes button[aria-pressed="true"]{background:linear-gradient(var(--key-hi),var(--key-lo));color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.modes button:not([aria-pressed="true"]):hover{color:#fff}
+
+/* layout */
+.grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.plots{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--face);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 2px rgba(0,0,0,.07)}
+aside.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;gap:18px;background:var(--face2)}
+@media (max-width:880px){aside.panel{position:static;max-height:none}}
+.field{display:flex;flex-direction:column;gap:7px}
+.field+.field{border-top:1px solid var(--rule);padding-top:16px}
+.lab{font:600 13px/1.3 var(--f-ui);font-stretch:87.5%;color:var(--text2);letter-spacing:.01em}
+h2{margin:0;font:650 18px/1.25 var(--f-ui);font-stretch:92%}
+.plothead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.plothead h2{font:650 16px/1.25 var(--f-ui);font-stretch:92%}
+
+/* screens */
+.cv{position:relative;width:100%;background:var(--panel);border:6px solid var(--bezel);border-radius:8px;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.6)}
+canvas{display:block;width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.legend span{display:flex;align-items:center;gap:7px;background:var(--bezel);color:#D9E4E7;font:500 12.5px/1 var(--f-ui);font-stretch:90%;padding:5px 9px;border-radius:4px}
+.sw{display:inline-block;width:16px;border-top:2.5px solid}
+
+/* controls */
+input[type=text]{font:500 16px var(--f-code);color:var(--text);background:var(--paper);border:1px solid var(--key-edge);border-radius:6px;padding:9px 11px;width:100%;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hint{font-size:13px;color:var(--text2);line-height:1.5}
+.hint code{font:13px var(--f-code);background:var(--key-lo);padding:1px 5px;border-radius:3px;color:var(--text)}
+.err{font-size:13px;color:var(--danger)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.btn,.chip{font:600 13.5px/1.1 var(--f-ui);font-stretch:90%;color:var(--text);cursor:pointer;border:1px solid var(--key-edge);border-radius:5px;
+  background:linear-gradient(var(--key-hi),var(--key-lo));box-shadow:inset 0 1px 0 #fff,0 1px 1.5px rgba(0,0,0,.22);padding:9px 12px}
+.chip{font-weight:500;font-size:13px;padding:6px 9px}
+.btn:hover,.chip:hover{border-color:#6E7780}
+.btn:active,.chip:active{transform:translateY(1px);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.btn[aria-pressed="true"]{background:linear-gradient(#3A424A,#2A3037);color:#fff;border-color:#1A1F24;box-shadow:inset 0 1px 2px rgba(0,0,0,.5);position:relative;padding-left:24px}
+.btn[aria-pressed="true"]::before{content:"";position:absolute;left:10px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#53E6A6;box-shadow:0 0 6px #53E6A6}
+.btn.primary{background:linear-gradient(var(--teal-hi),var(--teal));color:#fff;border-color:#08484F;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 2px rgba(0,0,0,.3)}
+.btn.primary:hover{border-color:#04333A}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.seg{display:flex;gap:6px}
+.seg .btn{flex:1;white-space:nowrap}
+.slide{display:flex;align-items:center;gap:10px}
+.slide input{flex:1}
+.slide output,.hz{font:600 15px var(--f-ui);min-width:52px;text-align:right}
+.hz{min-width:66px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:24px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:#9AA2AA;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#9AA2AA;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;border:1px solid #5F6870;
+  background:radial-gradient(circle at 50% 38%,#FFFFFF,#C5CBD0 72%);box-shadow:0 1px 3px rgba(0,0,0,.45)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:1px solid #5F6870;background:radial-gradient(circle at 50% 38%,#FFFFFF,#C5CBD0 72%);box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.btn:focus-visible,.chip:focus-visible,.modes button:focus-visible,input:focus-visible,.harm:focus-visible{outline:2px solid var(--teal-hi);outline-offset:2px}
+
+/* verdict */
+.verdict{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#thumb{width:140px;height:56px;flex:none;background:var(--panel);border:4px solid var(--bezel);border-radius:6px}
+.shape{font:700 28px/1.1 var(--f-ui);font-stretch:110%}
+.badge{display:inline-flex;align-items:center;gap:6px;font:500 12.5px/1 var(--f-ui);font-stretch:90%;padding:5px 9px;border-radius:4px;background:var(--bezel);color:#DCE6E9}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sum);box-shadow:0 0 5px var(--sum)}
+.facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;max-width:74ch}
+
+/* printed formulas */
+.formula{font:400 18px/1.7 var(--f-math);color:var(--text);overflow-x:auto;white-space:nowrap;padding:10px 14px;background:var(--paper);border:1px solid var(--rule);border-radius:6px}
+.closed{display:flex;flex-direction:column;gap:2px;font:400 17px/1.6 var(--f-math);padding:0 4px}
+
+/* readouts: instrument LCD */
+.readout{font:400 14.5px/1.75 var(--f-ui);background:var(--panel);color:#CFDDE0;border:4px solid var(--bezel);border-radius:6px;padding:10px 14px}
+.readout b{color:#fff;font-weight:600}
+.readout .pos,.pos{color:var(--pos)!important} .readout .neg,.neg{color:var(--neg)!important}
+
+/* table */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;font:400 13.5px var(--f-ui);width:100%;min-width:340px}
+th,td{padding:6px 7px;text-align:right;border-bottom:1px solid var(--rule)}
+th{font:600 13px var(--f-ui);font-stretch:87.5%;color:var(--text2)}
+td:nth-child(2),td:nth-child(3){font-family:var(--f-math);font-size:16px}
+td:first-child,th:first-child{text-align:left}
+
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:880px){.two{grid-template-columns:minmax(0,1fr)}}
+.two>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.explain{font-size:15px;color:var(--text2);max-width:76ch;margin:0}
+.explain b{color:var(--text);font-weight:600}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* harmonic keys */
+.harms{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.harm{background:var(--panel);border:3px solid var(--bezel);border-radius:6px;padding:5px 6px 4px;cursor:pointer;font:500 12px/1.2 var(--f-ui);color:#D3E0E3;text-align:left;display:flex;flex-direction:column;gap:3px}
+.harm .hw{width:100%}
+.harm[aria-pressed="false"]{opacity:.42}
+.harm[aria-pressed="false"] span{text-decoration:line-through}
+.harm:disabled{opacity:.3;cursor:default}
+.harm.beyond{border-style:dashed;border-color:#59656C}
+.harm:not(:disabled):hover{border-color:var(--sum)}
+@media (max-width:560px){.modes{width:100%}.modes button{flex:1;padding:10px 8px}}
+@media (min-width:881px) and (max-width:1180px){.plots>.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}.btn:active,.chip:active{transform:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Fourier Lab</h1>
+      <p class="tag">Fourier series, half-range series and Fourier transform of any function you type</p>
+    </div>
+    <nav class="modes" aria-label="Mode">
+      <button id="m-fs" aria-pressed="true">Fourier series</button>
+      <button id="m-hr" aria-pressed="false">Half-range series</button>
+      <button id="m-ft" aria-pressed="false">Fourier transform</button>
+    </nav>
+  </header>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Inputs">
+      <div class="field">
+        <label class="lab" for="expr">Function f(x)</label>
+        <input type="text" id="expr" value="x" spellcheck="false" autocomplete="off">
+        <div class="err" id="err"></div>
+        <div class="hint">Use <code>pi</code>, <code>x^2</code>, <code>abs(x)</code>, <code>sin(x)</code>, <code>exp(x)</code>. Piecewise: <code>x&lt;0 ? -1 : 1</code></div>
+      </div>
+
+      <div class="field" id="box-ab">
+        <span class="lab" id="ab-lab">Interval (a, b), period b − a</span>
+        <div class="row2">
+          <input type="text" id="a" value="-pi" aria-label="Left end a" spellcheck="false">
+          <input type="text" id="b" value="pi" aria-label="Right end b" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="field" id="box-L" hidden>
+        <label class="lab" for="L">Given on (0, L)</label>
+        <input type="text" id="L" value="pi" spellcheck="false">
+        <div class="seg" role="group" aria-label="Extension">
+          <button class="btn" id="k-sin" aria-pressed="true">Sine series (odd)</button>
+          <button class="btn" id="k-cos" aria-pressed="false">Cosine series (even)</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lab">Try an example</span>
+        <div class="chips" id="presets"></div>
+      </div>
+
+      <div class="field">
+        <label class="lab" for="N" id="N-lab">Number of terms N</label>
+        <div class="slide">
+          <input type="range" id="N" min="1" max="40" step="1" value="5">
+          <output id="Nout" for="N">5</output>
+        </div>
+        <button class="btn primary" id="play">Play build-up</button>
+      </div>
+
+      <div class="field" id="box-hear">
+        <span class="lab">Hear the series</span>
+        <div class="slide"><input type="range" id="f0" min="55" max="880" step="1" value="220" aria-label="Fundamental pitch"><output id="f0out" class="hz">220 Hz</output></div>
+        <div class="seg"><button class="btn" id="tone" aria-pressed="false">▶ Hold tone</button><button class="btn" id="pluck">Pluck</button></div>
+        <div class="hint">The partial sum repeats f₀ times a second. Each coefficient becomes the loudness of one harmonic (n·f₀). Move N or switch harmonics off while it plays.</div>
+      </div>
+    </aside>
+
+    <section class="plots">
+      <div class="panel">
+        <div class="plothead">
+          <h2 id="p1-title">Graph</h2>
+          <div class="legend" id="leg1"></div>
+        </div>
+        <div class="cv"><canvas id="c1" role="img" aria-label="Function and its approximation"></canvas></div>
+      </div>
+
+      <div class="panel" id="verdict-panel">
+        <span class="lab">What shape is this?</span>
+        <div class="verdict">
+          <canvas id="thumb" aria-hidden="true"></canvas>
+          <div style="min-width:0">
+            <div class="shape" id="shape">—</div>
+            <div class="chips" id="badges" style="margin-top:6px"></div>
+          </div>
+        </div>
+        <ul class="facts" id="facts"></ul>
+      </div>
+
+      <div class="panel" id="det-panel">
+        <div class="plothead"><div><h2 id="det-title">What does a coefficient actually measure?</h2></div><div class="legend" id="leg3"></div></div>
+        <p class="explain" id="det-intro">Every aₙ and bₙ answers one question: <b>how much does f look like this test wave?</b> Multiply f by the wave and add up the area under the product. Green area counts for, red area counts against. Pick n and press Scan.</p>
+        <div class="ctl">
+          <div class="seg" role="group" aria-label="Coefficient type"><button class="btn" id="d-a" aria-pressed="true">aₙ · cos</button><button class="btn" id="d-b" aria-pressed="false">bₙ · sin</button></div>
+          <span class="lab m" style="margin-left:6px">harmonic n</span>
+          <div class="slide" style="flex:1;min-width:150px"><input type="range" id="dn" min="0" max="12" step="1" value="1" aria-label="Harmonic number n"><output id="dnout">1</output></div>
+          <button class="btn primary" id="dscan">Scan the integral</button>
+        </div>
+        <div class="lab m">f(x) and the test wave</div>
+        <div class="cv"><canvas id="c3" role="img" aria-label="f and the test wave"></canvas></div>
+        <div class="lab m">Their product f(x) × test wave. The coefficient is the net shaded area</div>
+        <div class="cv"><canvas id="c3b" role="img" aria-label="Product of f and the test wave with shaded area"></canvas></div>
+        <div class="readout" id="dread"></div>
+        <p class="explain" id="dwhy"></p>
+      </div>
+
+      <div class="panel" id="ing-panel">
+        <div class="plothead"><div><h2>Every term is a spinning circle</h2></div><div class="legend" id="leg4"></div></div>
+        <p class="explain">Harmonic n is a circle of radius <b>√(aₙ² + bₙ²)</b> that spins n times faster than the first. Stack the circles tip to tail: the last tip traces the partial sum. <b>Tap a harmonic below to switch it off</b>; the graph, the circles and the sound all lose it.</p>
+        <div class="cv"><canvas id="c4" role="img" aria-label="Rotating circles drawing the partial sum"></canvas></div>
+        <div class="harms" id="harms"></div>
+        <div class="ctl"><button class="btn" id="h-all">All on</button><button class="btn" id="h-odd">Odd only</button><button class="btn" id="h-even">Even only</button><span class="hint" id="h-note"></span></div>
+      </div>
+
+      <div class="panel" id="phys-panel" hidden>
+        <div class="plothead"><div><h2 id="phys-title">Physics</h2></div><button class="btn primary" id="phys-go">Pluck</button></div>
+        <p class="explain" id="phys-text"></p>
+        <div class="cv"><canvas id="c5" role="img" aria-label="Physical system evolving from f"></canvas></div>
+        <div class="readout" id="phys-read"></div>
+      </div>
+
+      <div class="panel" id="sq-panel" hidden>
+        <div class="plothead"><div><h2>Squeeze it: the uncertainty principle</h2></div></div>
+        <p class="explain">Stretch or squeeze f(x) and its spectrum does the opposite. A short pulse needs <b>many</b> frequencies to make its sudden start and stop; a long one needs only a few. Then listen: the pulse becomes the loudness envelope of a 660 Hz tone. Dashed curves show k = 1.</p>
+        <div class="ctl"><span class="lab m">stretch k</span><div class="slide" style="flex:1;min-width:180px"><input type="range" id="sk" min="0.2" max="3" step="0.05" value="1" aria-label="Stretch factor k"><output id="skout">1.00</output></div><button class="btn primary" id="sq-play">▶ Hear the pulse</button></div>
+        <div class="two"><div><div class="lab m">Time: g(x) = f(x / k)</div><div class="cv"><canvas id="c6"></canvas></div></div><div><div class="lab m">Spectrum: |G(ω)| = k·|F(kω)|</div><div class="cv"><canvas id="c7"></canvas></div></div></div>
+        <div class="readout" id="sq-read"></div>
+      </div>
+
+      <div class="panel">
+        <span class="lab" id="formula-lab">The series</span>
+        <div class="formula" id="general"></div>
+        <div class="closed" id="closed"></div>
+        <div class="formula" id="expanded"></div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <div class="plothead">
+            <h2 id="p2-title">Coefficients</h2>
+            <div class="legend" id="leg2"></div>
+          </div>
+          <div class="cv"><canvas id="c2" role="img" aria-label="Coefficient sizes"></canvas></div>
+        </div>
+        <div class="panel">
+          <span class="lab" id="tbl-lab">First coefficients</span>
+          <div class="tbl"><table id="tbl"></table></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+<script>
+const PI=Math.PI, NMAX=40;
+const $=id=>document.getElementById(id);
+const st={mode:'fs',kind:'sin',N:5,W:0,f:null,a:-PI,b:PI,L:PI,coef:null,ft:null,timer:null,mute:new Set()};
+
+const PRESETS={
+  fs:[
+    {t:'x on (−π, π)',e:'x',a:'-pi',b:'pi'},
+    {t:'x² on (−π, π)',e:'x^2',a:'-pi',b:'pi'},
+    {t:'|x| on (−π, π)',e:'abs(x)',a:'-pi',b:'pi'},
+    {t:'square',e:'x<0 ? -1 : 1',a:'-pi',b:'pi'},
+    {t:'x on (0, 2π)',e:'x',a:'0',b:'2*pi'},
+    {t:'pulse',e:'abs(x)<1 ? 1 : 0',a:'-3',b:'3'},
+    {t:'|sin x|',e:'abs(sin(x))',a:'-pi',b:'pi'},
+    {t:'eˣ',e:'exp(x)',a:'-pi',b:'pi'}],
+  hr:[
+    {t:'x on (0, π)',e:'x',L:'pi'},
+    {t:'1 on (0, π)',e:'1',L:'pi'},
+    {t:'x(π − x)',e:'x*(pi-x)',L:'pi'},
+    {t:'π − x',e:'pi-x',L:'pi'},
+    {t:'x² on (0, 1)',e:'x^2',L:'1'},
+    {t:'sin x',e:'sin(x)',L:'pi'}],
+  ft:[
+    {t:'rectangle',e:'1',a:'-1',b:'1'},
+    {t:'triangle',e:'1-abs(x)',a:'-1',b:'1'},
+    {t:'Gaussian',e:'exp(-x^2)',a:'-6',b:'6'},
+    {t:'e^(−|x|)',e:'exp(-abs(x))',a:'-15',b:'15'},
+    {t:'x on (−1, 1)',e:'x',a:'-1',b:'1'},
+    {t:'cos x pulse',e:'cos(x)',a:'-pi/2',b:'pi/2'}]
+};
+
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+function cleanExpr(s){return s.replace(/π/g,'pi').replace(/−/g,'-').replace(/\|([^|]+)\|/g,'abs($1)').replace(/²/g,'^2').replace(/³/g,'^3')}
+function num(s){const v=math.evaluate(cleanExpr(s));if(typeof v!=='number'||!isFinite(v))throw new Error('Not a number');return v}
+function compile(s){
+  const c=math.compile(cleanExpr(s));
+  const f=x=>{let v=c.evaluate({x});if(typeof v==='boolean')v=+v;if(v&&typeof v==='object'&&'re' in v)v=v.re;return (typeof v==='number'&&isFinite(v))?v:NaN};
+  const t=f(0.123);if(isNaN(t)&&isNaN(f(1.37)))throw new Error('f(x) does not give a real number');
+  return f;
+}
+
+/* ---------- pretty numbers ---------- */
+function frac(w,qmax,tol){for(let q=1;q<=qmax;q++){const p=Math.round(w*q);if(p!==0&&Math.abs(w*q-p)<tol*q)return [p,q]}return null}
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a}
+function nice(v){
+  if(Math.abs(v)<5e-6)return '0';
+  const sg=v<0?'−':'', a=Math.abs(v), tol=4e-5*Math.max(1,a);
+  let r=frac(a,12,tol); if(r) return sg+(r[1]===1?r[0]:r[0]+'/'+r[1]);
+  r=frac(a*PI,12,tol*PI); if(r) return sg+(r[1]===1?(r[0])+'/π':r[0]+'/('+r[1]+'π)');
+  r=frac(a/PI,12,tol/PI); if(r) return sg+(r[0]===1?'':r[0])+'π'+(r[1]===1?'':'/'+r[1]);
+  r=frac(a*PI*PI,12,tol*PI*PI); if(r) return sg+(r[1]===1?r[0]+'/π²':r[0]+'/('+r[1]+'π²)');
+  r=frac(a/(PI*PI),12,tol/(PI*PI)); if(r) return sg+(r[0]===1?'':r[0])+'π²'+(r[1]===1?'':'/'+r[1]);
+  return sg+a.toFixed(4);
+}
+function dec(v){return Math.abs(v)<5e-6?'0':v.toFixed(4).replace('-','−')}
+function sup(n){return String(n).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]).join('')}
+function isPiMult(v){return !!frac(Math.abs(v)/PI,4,1e-9)||Math.abs(v)<1e-12}
+function tickLabel(v,piMode){
+  if(Math.abs(v)<1e-9)return '0';
+  if(piMode){const r=frac(Math.abs(v)/PI,4,1e-6);if(r){const s=(v<0?'−':'')+(r[0]===1?'':r[0])+'π'+(r[1]===1?'':'/'+r[1]);return s}}
+  const s=Math.abs(v)>=100?v.toFixed(0):Math.abs(v)>=10?(+v.toFixed(1)).toString():(+v.toFixed(2)).toString();
+  return s.replace('-','−');
+}
+/* argument string for cos(n·k·x) where k=π/L */
+function arg(n,L){
+  const k=PI/L;
+  if(Math.abs(k-1)<1e-9)return (n===1?'':n)+'x';
+  const r=frac(k/PI,12,1e-9);
+  if(r){const p=n*r[0],q=r[1],g=gcd(p,q),P=p/g,Q=q/g;return (P===1?'':P)+'πx'+(Q===1?'':'/'+Q)}
+  return n+'·'+k.toFixed(3)+'x';
+}
+
+/* ---------- integration ---------- */
+function samples(f,a,b,M){const h=(b-a)/M,xs=new Float64Array(M),fs=new Float64Array(M),w=new Float64Array(M);let bad=0;
+  for(let i=0;i<M;i++){const x=a+h*(i+0.5);xs[i]=x;let v=f(x);if(isNaN(v)){v=f(x+1e-9*(b-a));if(isNaN(v)){v=0;bad++}}fs[i]=v;w[i]=h}
+  return {xs,fs,w,bad};
+}
+
+/* ---------- series coefficients ---------- */
+function seriesCoef(){
+  const M=20000; let a=[],b=[];
+  if(st.mode==='fs'){
+    const L=(st.b-st.a)/2,S=samples(st.f,st.a,st.b,M);
+    for(let n=0;n<=NMAX;n++){let sa=0,sb=0;const k=n*PI/L;for(let i=0;i<M;i++){const t=k*S.xs[i];sa+=S.w[i]*S.fs[i]*Math.cos(t);sb+=S.w[i]*S.fs[i]*Math.sin(t)}a.push(sa/L);b.push(n?sb/L:0)}
+    return {a,b,L,bad:S.bad};
+  }
+  const L=st.L,S=samples(st.f,0,L,M);
+  for(let n=0;n<=NMAX;n++){let sa=0,sb=0;const k=n*PI/L;for(let i=0;i<M;i++){const t=k*S.xs[i];sa+=S.w[i]*S.fs[i]*Math.cos(t);sb+=S.w[i]*S.fs[i]*Math.sin(t)}
+    a.push(st.kind==='cos'?2*sa/L:0);b.push(st.kind==='sin'&&n?2*sb/L:0)}
+  return {a,b,L,bad:S.bad};
+}
+function partial(x,c,N){const k=PI/c.L;let s=c.a[0]/2;for(let n=1;n<=N;n++){if(st.mute.has(n))continue;s+=c.a[n]*Math.cos(n*k*x)+c.b[n]*Math.sin(n*k*x)}return s}
+function mod(x,p){return ((x%p)+p)%p}
+function extension(x){
+  if(st.mode==='fs'){const P=st.b-st.a;return st.f(st.a+mod(x-st.a,P))}
+  const L=st.L,r=mod(x+L,2*L)-L; if(r>=0)return st.f(r);
+  return st.kind==='sin'?-st.f(-r):st.f(-r);
+}
+
+/* closed form guess for nth coefficient */
+function closedForm(c,label){
+  const v=c.slice(1,21); if(v.every(t=>Math.abs(t)<5e-6))return null;
+  const nz=[];for(let n=1;n<=NMAX;n++)if(Math.abs(c[n])>5e-6)nz.push(n);
+  if(nz.length<=3)return label+' = 0 except '+nz.map(n=>label[0]+String(n).split('').map(d=>'₀₁₂₃₄₅₆₇₈₉'[+d]).join('')+' = '+nice(c[n])).join(', ');
+  const pats=[
+    {s:n=>1,txt:''},
+    {s:n=>n%2?1:-1,txt:'(−1)ⁿ⁺¹'},
+    {s:n=>n%2?1:0,txt:'',note:', n odd (0 for even n)'},
+    {s:n=>n%2?0:1,txt:'',note:', n even (0 for odd n)'},
+    {s:n=>n%4===1?1:n%4===3?-1:0,txt:'(−1)⁽ⁿ⁻¹⁾ᐟ²',note:', n odd'}];
+  for(let k=0;k<=3;k++)for(const p of pats){
+    let C=null,ok=true;
+    for(let n=1;n<=20&&ok;n++){const s=p.s(n),val=v[n-1];
+      if(s===0){if(Math.abs(val)>2e-4*Math.max(1,Math.abs(C||1)))ok=false;continue}
+      const r=val*Math.pow(n,k)/s; if(C===null)C=r; else if(Math.abs(r-C)>2e-4*Math.max(1,Math.abs(C)))ok=false}
+    if(ok&&C!==null&&Math.abs(C)>5e-6){
+      let txt=p.txt;if(C<0&&txt==='(−1)ⁿ⁺¹'){C=-C;txt='(−1)ⁿ'}
+      const cs=nice(C); const neg=cs.startsWith('−'); let body=neg?cs.slice(1):cs;
+      if(body.includes('/')&&(txt||k))body='('+body+')';
+      let numTxt=txt?(body==='1'?'':body+'·')+txt:body;
+      let den=k===0?'':k===1?'n':'n'+sup(k);
+      return label+' = '+(neg?'−':'')+numTxt+(den?' / '+den:'')+(p.note||'');
+    }
+  }
+  return label+' : no simple closed form, see the numeric values';
+}
+
+/* ---------- shape analysis ---------- */
+function analyze(g,lo,P,wrap){
+  const K=1200,h=P/K,v=[];for(let i=0;i<(wrap?K:K+1);i++){const x=lo+h*i+(wrap?h*0.37:0);let t=g(x);v.push(isNaN(t)?0:t)}
+  const n=v.length,mx=Math.max(...v),mn=Math.min(...v),R=mx-mn,amp=Math.max(Math.abs(mx),Math.abs(mn));
+  const res={R,mx,mn,constant:R<1e-7*Math.max(1,amp),jumps:[],corners:[],flatFrac:0,curvedFrac:0,levels:0,duty:0,edgeL:false,edgeR:false};
+  if(res.constant)return res;
+  const at=i=>v[((i%n)+n)%n], steps=wrap?n:n-1, tol=0.04*R;
+  const isJ=new Array(steps).fill(false);
+  for(let i=0;i<steps;i++){if(Math.abs(at(i+1)-at(i))>tol){isJ[i]=true}}
+  const d=[];for(let i=0;i<steps;i++)d.push(isJ[i]?null:(at(i+1)-at(i))*K/R);
+  let flat=0,cnt=0;d.forEach(t=>{if(t!==null){cnt++;if(Math.abs(t)<0.02)flat++}});res.flatFrac=cnt?flat/cnt:1;
+  const dds=[],dsteps=wrap?steps:steps-1;let curved=0,cc=0;
+  for(let i=0;i<dsteps;i++){const d1=d[i],d2=d[(i+1)%steps];dds.push(d1===null||d2===null?null:Math.abs(d2-d1))}
+  const isC=dds.map((dd,i)=>{if(dd===null)return false;cc++;const m=dds.length,pv=wrap||i>=3?(dds[(i-3+m)%m]||0):0,nx=wrap||i+3<m?(dds[(i+3)%m]||0):0;const c=dd>0.02&&dd>4*Math.max(pv,nx);if(!c&&dd>1e-6)curved++;return c});
+  res.curvedFrac=cc?curved/cc:0;
+  const cluster=(arr,off)=>{const out=[];for(let i=0;i<arr.length;i++){if(arr[i]&&!arr[(i-1+arr.length)%arr.length])out.push(lo+h*(i+off)+(wrap?h*0.37:0))}if(out.length===0&&arr.every(t=>t))return[];return out};
+  res.jumps=cluster(isJ,0.5);res.corners=cluster(isC,1);
+  if(res.flatFrac>0.97){const lv=[];v.forEach(t=>{if(!lv.some(u=>Math.abs(u-t)<0.02*R))lv.push(t)});res.levels=lv.length;res.duty=v.filter(t=>Math.abs(t-mx)<0.02*R).length/n}
+  res.edgeL=Math.abs(v[0])>0.05*amp;res.edgeR=Math.abs(v[n-1])>0.05*amp;
+  return res;
+}
+function classifySeries(A,c){
+  if(A.constant)return {name:'Constant (DC level)',why:'f is constant, so only a₀ survives. No waves are needed.'};
+  const J=A.jumps.length,C=A.corners.length,curved=A.curvedFrac>0.2;
+  if(A.flatFrac>0.97&&J>0){
+    if(A.levels===2)return Math.abs(A.duty-0.5)<0.03?{name:'Square wave',why:'Two flat levels, each held for half the period, with sudden jumps between them.'}:{name:'Rectangular pulse train',why:'Two flat levels with unequal widths: a pulse that repeats every period.'};
+    return {name:'Staircase (multi-level rectangular) wave',why:'Several flat levels joined by jumps.'};
+  }
+  if(!curved){
+    if(J>0&&C===0)return {name:'Sawtooth wave',why:'A straight ramp that rises (or falls) at one slope, then drops back with a jump at the end of every period.'};
+    if(J===0&&C>0)return A.flatFrac>0.08?{name:'Trapezoidal wave',why:'Straight ramps joined by flat tops, with corners but no jumps.'}:{name:'Triangle wave',why:'Straight lines going up and down, meeting at sharp corners. The graph is continuous: no jumps.'};
+    if(J>0&&C>0)return {name:'Mixed ramp-and-step wave',why:'Straight pieces with both corners and jumps, partly sawtooth and partly rectangular.'};
+  }
+  if(J>0)return {name:'Curved sawtooth-like wave',why:'Curved arcs that jump back at the period boundary, like a sawtooth with bent teeth.'};
+  if(C>0)return {name:'Scalloped (parabolic-arc) wave',why:'Smooth arcs that meet at sharp corners. Continuous, but the slope changes suddenly.'};
+  let e=0,best=0;for(let n=1;n<=NMAX;n++){const q=c.a[n]**2+c.b[n]**2;e+=q;best=Math.max(best,q)}
+  if(e>0&&best/e>0.99999)return {name:'Pure sinusoid',why:'f is already a single sine or cosine wave, so one term reproduces it exactly.'};
+  return {name:'Smooth periodic wave',why:'No jumps and no corners anywhere, including at the period boundary.'};
+}
+function classifyFT(A,ft){
+  if(A.constant&&Math.abs(A.mx)>1e-9)return {name:'Rectangular pulse',why:'f is a constant height on (a, b) and zero outside. Its transform is the sinc function: F(ω) = 2A·sin(ωw/2)/ω for a pulse of width w centred at 0, with zeros at ω = 2πk/w.'};
+  if(A.constant)return {name:'Zero function',why:'Nothing to transform.'};
+  const Ji=A.jumps.length,C=A.corners.length,curved=A.curvedFrac>0.2,edges=A.edgeL||A.edgeR;
+  if(A.flatFrac>0.97&&!edges&&Ji>=2)return {name:'Rectangular pulse',why:'A flat block that switches on and off. Its transform is a sinc, decaying like 1/ω with ripples.'};
+  if(A.flatFrac>0.97)return {name:'Rectangular pulse',why:'A flat block that switches on and off with jumps. Its transform is a sinc, decaying like 1/ω with ripples.'};
+  if(!curved&&!edges&&Ji===0)return C<=1?{name:'Triangular pulse',why:'Straight up, straight down, no jumps. Its transform is a sinc² shape: never negative, decaying like 1/ω².'}:{name:'Trapezoidal pulse',why:'Ramps with a flat top. The spectrum decays like 1/ω² with small ripples.'};
+  if(curved&&!edges&&Ji===0&&C===0)return {name:'Smooth bell-shaped pulse',why:'No jumps or corners anywhere, so the spectrum is smooth, has no ripples and dies off very fast. A Gaussian transforms into another Gaussian.'};
+  if(!edges&&Ji===0&&C>0)return {name:'Pulse with a cusp',why:'Smooth except for a sharp corner, like e^(−|x|). The spectrum decays like 1/ω² (for e^(−|x|) it is exactly 2/(1+ω²)).'};
+  return {name:'Truncated pulse with sharp edges',why:'f is cut off sharply at the ends of (a, b), so the spectrum ripples and decays slowly, like 1/ω.'};
+}
+
+/* ---------- Fourier transform ---------- */
+function computeFT(){
+  const a=st.a,b=st.b,w=b-a,S=samples(st.f,a,b,4000);
+  const FTat=om=>{let re=0,im=0;for(let i=0;i<S.xs.length;i++){const t=om*S.xs[i];re+=S.w[i]*S.fs[i]*Math.cos(t);im-=S.w[i]*S.fs[i]*Math.sin(t)}return [re,im]};
+  const F0=Math.hypot(...FTat(0));let Wmax=4;
+  for(let om=200;om>=1;om-=0.5){const [r,i]=FTat(om);if(Math.hypot(r,i)>0.02*Math.max(F0,1e-9)){Wmax=om*1.25;break}}
+  let fm=0;S.fs.forEach(v=>fm=Math.max(fm,Math.abs(v)));let l=null,r=null;S.fs.forEach((v,i)=>{if(Math.abs(v)>0.05*fm){if(l===null)l=S.xs[i];r=S.xs[i]}});
+  const we=Math.max((r-l)||w,1e-3);Wmax=Math.min(Math.max(Wmax,4),60,Math.max(16*PI/we,4));
+  const K=500,om=[],re=[],im=[];for(let j=0;j<=K;j++){const o=-Wmax+2*Wmax*j/K;const [r,i]=FTat(o);om.push(o);re.push(r);im.push(i)}
+  let mx=0,mi=0;re.forEach((r,j)=>{mx=Math.max(mx,Math.hypot(r,im[j]));mi=Math.max(mi,Math.abs(im[j]))});
+  return {om,re,im,Wmax,F0:FTat(0),realOnly:mi<1e-4*mx,imagOnly:re.every(r=>Math.abs(r)<1e-4*mx),bad:S.bad,w};
+}
+function recon(x,W){const ft=st.ft;let s=0;const d=ft.om[1]-ft.om[0];for(let j=0;j<ft.om.length;j++){const o=ft.om[j];if(Math.abs(o)>W)continue;s+=(ft.re[j]*Math.cos(o*x)-ft.im[j]*Math.sin(o*x))*d}return s/(2*PI)}
+
+/* ---------- plotting ---------- */
+function canvasCtx(cv,h){const d=window.devicePixelRatio||1,w=cv.parentElement.clientWidth;cv.width=w*d;cv.height=h*d;cv.style.height=h+'px';const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return {c,w,h}}
+function niceStep(span){const raw=span/7,p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3?2:m<7?5:10)*p}
+function frame(cv,h,xr,yr,piX){
+  const {c,w}=canvasCtx(cv,h),L=46,R=10,T=10,B=26;
+  const X=v=>L+(v-xr[0])/(xr[1]-xr[0])*(w-L-R),Y=v=>T+(yr[1]-v)/(yr[1]-yr[0])*(h-T-B);
+  c.fillStyle=css('--panel');c.fillRect(0,0,w,h);
+  const grid=css('--grid'),line=css('--line'),muted=css('--muted');
+  c.font='500 12px Archivo, sans-serif';c.lineWidth=1;
+  let xs;if(piX){const span=(xr[1]-xr[0])/PI;const st_=span>8?2:span>3?1:0.5;xs=[];for(let k=Math.ceil(xr[0]/(st_*PI));k*st_*PI<=xr[1]+1e-9;k++)xs.push(k*st_*PI)}
+  else{const s=niceStep(xr[1]-xr[0]);xs=[];for(let v=Math.ceil(xr[0]/s)*s;v<=xr[1]+1e-9;v+=s)xs.push(v)}
+  const ys=[];const sy=niceStep(yr[1]-yr[0])*7/5;for(let v=Math.ceil(yr[0]/sy)*sy;v<=yr[1]+1e-9;v+=sy)ys.push(v);
+  c.strokeStyle=grid;xs.forEach(v=>{c.beginPath();c.moveTo(X(v),T);c.lineTo(X(v),h-B);c.stroke()});ys.forEach(v=>{c.beginPath();c.moveTo(L,Y(v));c.lineTo(w-R,Y(v));c.stroke()});
+  c.strokeStyle=line;c.lineWidth=1.2;if(yr[0]<0&&yr[1]>0){c.beginPath();c.moveTo(L,Y(0));c.lineTo(w-R,Y(0));c.stroke()}if(xr[0]<0&&xr[1]>0){c.beginPath();c.moveTo(X(0),T);c.lineTo(X(0),h-B);c.stroke()}
+  c.fillStyle=muted;c.textAlign='center';xs.forEach(v=>c.fillText(tickLabel(v,piX),X(v),h-8));c.textAlign='right';ys.forEach(v=>c.fillText(tickLabel(v,false),L-6,Y(v)+4));
+  return {c,X,Y,xr,yr,w,h};
+}
+function drawFn(F,g,col,lw,dash,lo,hi){
+  const c=F.c;lo=lo??F.xr[0];hi=hi??F.xr[1];const n=900,brk=0.15*(F.yr[1]-F.yr[0]);
+  c.strokeStyle=col;c.lineWidth=lw;c.setLineDash(dash||[]);c.lineJoin='round';c.lineCap='round';c.beginPath();let pen=false,prev=null;
+  for(let i=0;i<=n;i++){const x=lo+(hi-lo)*i/n,y=g(x);if(isNaN(y)){pen=false;prev=null;continue}if(prev!==null&&Math.abs(y-prev)>brk)pen=false;pen?c.lineTo(F.X(x),F.Y(y)):c.moveTo(F.X(x),F.Y(y));pen=true;prev=y}
+  c.stroke();c.setLineDash([]);
+}
+function yrange(vals){let mn=Infinity,mx=-Infinity;vals.forEach(v=>{if(isFinite(v)){mn=Math.min(mn,v);mx=Math.max(mx,v)}});if(mn===mx){mn-=1;mx+=1}const p=(mx-mn)*0.14;return [Math.min(mn-p,0-p*0.3),Math.max(mx+p,0+p*0.3)]}
+function legend(el,items){el.innerHTML=items.map(([col,txt,dash])=>`<span><i class="sw" style="border-color:${col};border-top-style:${dash?'dashed':'solid'}"></i>${txt}</span>`).join('')}
+
+function drawThumb(name){
+  const cv=$('thumb'),d=window.devicePixelRatio||1;cv.width=140*d;cv.height=56*d;const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);c.clearRect(0,0,140,56);
+  c.strokeStyle=css('--given');c.lineWidth=2.5;c.lineJoin='round';c.beginPath();
+  const pts=[];const s=name.toLowerCase();
+  if(s.includes('sawtooth'))pts.push([4,46],[46,10],[46,46],[94,10],[94,46],[136,10]);
+  else if(s.includes('square')||s.includes('rectangular p'))pts.push([4,46],[4,10],[38,10],[38,46],[72,46],[72,10],[106,10],[106,46],[136,46]);
+  else if(s.includes('triangle')||s.includes('triangular'))pts.push([4,46],[36,10],[70,46],[104,10],[136,46]);
+  else if(s.includes('trapez'))pts.push([4,46],[20,10],[44,10],[60,46],[80,46],[96,10],[120,10],[136,46]);
+  else{for(let i=0;i<=60;i++){const x=4+132*i/60;let y;
+    if(s.includes('scallop'))y=10+36*Math.pow(((i%30)-15)/15,2);
+    else if(s.includes('bell')||s.includes('cusp'))y=46-36*(s.includes('cusp')?Math.exp(-Math.abs(i-30)/7):Math.exp(-(((i-30)/11)**2)));
+    else if(s.includes('constant'))y=28;
+    else y=28-18*Math.sin(i/60*4*PI);pts.push([x,y])}}
+  pts.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.stroke();
+}
+
+/* ---------- render ---------- */
+function setErr(m){$('err').textContent=m||''}
+function readInputs(){
+  try{
+    st.f=compile($('expr').value);
+    if(st.mode==='hr'){st.L=num($('L').value);if(!(st.L>0))throw new Error('L must be positive')}
+    else{st.a=num($('a').value);st.b=num($('b').value);if(!(st.b>st.a))throw new Error('Need a < b')}
+    setErr('');return true;
+  }catch(e){setErr(e.message.includes('Undefined symbol')?e.message+'. Use x as the variable.':e.message);return false}
+}
+function recompute(){
+  if(!readInputs())return;
+  if(st.mode==='ft'){st.ft=computeFT();if(st.W>st.ft.Wmax||st.W===0)st.W=st.ft.Wmax*0.35;setupSlider()}
+  else st.coef=seriesCoef();
+  st.mute.clear();renderStatic();renderDynamic();afterRecompute();
+}
+function setupSlider(){
+  const s=$('N');
+  if(st.mode==='ft'){s.min=0.1;s.max=st.ft.Wmax.toFixed(2);s.step=(st.ft.Wmax/200).toFixed(3);s.value=st.W;$('Nout').textContent=st.W.toFixed(1);$('N-lab').textContent='Frequency cut-off W (keep |ω| ≤ W)'}
+  else{s.min=1;s.max=NMAX;s.step=1;s.value=st.N;$('Nout').textContent=st.N;$('N-lab').textContent='Number of terms N'}
+}
+
+function renderStatic(){
+  const facts=[],badges=[];
+  if(st.mode==='ft'){
+    const ft=st.ft,A=analyze(st.f,st.a,st.b-st.a,false),cl=classifyFT(A,ft);
+    $('shape').textContent=cl.name;drawThumb(cl.name);
+    facts.push(cl.why);
+    if(ft.realOnly)badges.push('f even → F(ω) real');else if(ft.imagOnly)badges.push('f odd → F(ω) purely imaginary');else badges.push('F(ω) complex');
+    facts.push(`F(0) = ${nice(ft.F0[0])} is the total area under f(x).`);
+    if(ft.realOnly){let z=null;for(let j=ft.om.length/2|0;j<ft.om.length-1;j++){if(ft.re[j]*ft.re[j+1]<0){z=ft.om[j]-ft.re[j]*(ft.om[j+1]-ft.om[j])/(ft.re[j+1]-ft.re[j]);break}}
+      if(z)facts.push(`First zero of F(ω) at ω ≈ ${nice(z)}. A wider pulse pushes this zero closer to 0: narrow in x means wide in ω.`);else facts.push('F(ω) never crosses zero in the shown range.');}
+    facts.push('Slide W or press play: keeping more frequencies rebuilds f more sharply. Edges take the most high frequencies.');
+    $('badges').innerHTML=badges.map(b=>`<span class="badge">${b}</span>`).join('');
+    $('facts').innerHTML=facts.map(f=>`<li>${f}</li>`).join('');
+    $('formula-lab').textContent='The transform';
+    $('general').textContent=`F(ω) = ∫ f(x) e^(−iωx) dx  over (${tickLabel(st.a,isPiMult(st.a))}, ${tickLabel(st.b,isPiMult(st.b))}),   f(x) = 0 outside`;
+    $('closed').innerHTML=`<div>Inverse: f(x) = (1/2π) ∫ F(ω) e^(iωx) dω</div>`;
+    $('expanded').textContent=`Re F(ω) = ∫ f(x) cos ωx dx,   Im F(ω) = −∫ f(x) sin ωx dx`;
+    $('tbl-lab').textContent='Sample values of F(ω)';
+    const rows=[];const pts=[0,0.5,1,2,3,PI,2*PI,4*PI].filter(o=>o<=ft.Wmax);
+    pts.forEach(o=>{const j=Math.round((o+ft.Wmax)/(2*ft.Wmax)*(ft.om.length-1));rows.push(`<tr><td>${tickLabel(o,isPiMult(o))}</td><td>${dec(ft.re[j])}</td><td>${dec(ft.im[j])}</td><td>${dec(Math.hypot(ft.re[j],ft.im[j]))}</td></tr>`)});
+    $('tbl').innerHTML='<tr><th>ω</th><th>Re F</th><th>Im F</th><th>|F|</th></tr>'+rows.join('');
+    drawSpectrum();return;
+  }
+  const c=st.coef,L=c.L;
+  const lo=st.mode==='fs'?st.a:-L,P=2*L;
+  const A=analyze(extension,lo,P,true),cl=classifySeries(A,c);
+  $('shape').textContent=cl.name;drawThumb(cl.name);facts.push(cl.why);
+  const piX=isPiMult(L);
+  if(A.jumps.length){facts.push(`Jumps at x ≈ ${A.jumps.slice(0,4).map(x=>niceX(x,piX)).join(', ')} (and every period after). The series takes the midpoint there and overshoots nearby by about 9%: the Gibbs effect.`)}
+  if(A.corners.length&&!A.jumps.length)facts.push(`Corners at x ≈ ${A.corners.slice(0,4).map(x=>niceX(x,piX)).join(', ')}. The curve is continuous, so the series converges smoothly with no overshoot.`);
+  const allA=c.a.slice(1).every(t=>Math.abs(t)<5e-6),allB=c.b.slice(1).every(t=>Math.abs(t)<5e-6);
+  if(allA&&!allB)badges.push('odd → sine terms only');else if(allB&&!allA)badges.push('even → cosine terms only');else if(!allA&&!allB)badges.push('neither even nor odd');
+  let oddOnly=true;for(let n=2;n<=NMAX;n+=2)if(Math.abs(c.a[n])>5e-6||Math.abs(c.b[n])>5e-6)oddOnly=false;
+  if(oddOnly&&!(allA&&allB))badges.push('odd harmonics only');
+  const p=decay(c);if(p)badges.push(`terms shrink ≈ 1/n${p>3.5?'^fast':sup(Math.round(p))}`);
+  if(p){facts.push(p<1.5?'Coefficients fall like 1/n: slow, because of the jumps.':p<2.5?'Coefficients fall like 1/n²: faster, because the graph is continuous (only corners).':'Coefficients fall faster than 1/n², because the graph is smooth.')}
+  if(st.mode==='hr')facts.push(st.kind==='sin'?'Sine series: f is reflected as an odd function, f(−x) = −f(x), then repeated with period 2L.':'Cosine series: f is reflected as an even function, f(−x) = f(x), then repeated with period 2L.');
+  $('badges').innerHTML=badges.map(b=>`<span class="badge">${b}</span>`).join('');
+  $('facts').innerHTML=facts.map(f=>`<li>${f}</li>`).join('');
+  $('formula-lab').textContent=st.mode==='fs'?`Fourier series on (${niceX(st.a,piX)}, ${niceX(st.b,piX)}), L = ${niceX(L,piX)}`:`Half-range ${st.kind==='sin'?'sine':'cosine'} series on (0, ${niceX(L,piX)})`;
+  const k1=arg(1,L).replace(/^1/,'');const kn='n'+(Math.abs(PI/L-1)<1e-9?'x':(()=>{const r=frac(1/L,12,1e-9);return r?'πx'+(r[0]===1?'':'·'+r[0])+(r[1]===1?'':'/'+r[1]):'πx/'+L.toFixed(3)})());
+  $('general').textContent=st.mode==='fs'?`f(x) = a₀/2 + Σ [ aₙ cos(${kn}) + bₙ sin(${kn}) ]`:(st.kind==='sin'?`f(x) = Σ bₙ sin(${kn}),   bₙ = (2/L) ∫₀ᴸ f(x) sin(${kn}) dx`:`f(x) = a₀/2 + Σ aₙ cos(${kn}),   aₙ = (2/L) ∫₀ᴸ f(x) cos(${kn}) dx`);
+  const cf=[];cf.push('a₀ = '+nice(c.a[0]));if(!allA)cf.push(closedForm(c.a,'aₙ'));if(!allB)cf.push(closedForm(c.b,'bₙ'));
+  $('closed').innerHTML=cf.map(t=>`<div>${t}</div>`).join('');
+  let terms=[];if(Math.abs(c.a[0])>5e-6)terms.push(nice(c.a[0]/2));
+  for(let n=1;n<=NMAX&&terms.length<6;n++){
+    [[c.a[n],'cos'],[c.b[n],'sin']].forEach(([v,fn])=>{if(Math.abs(v)<5e-6||terms.length>=6)return;const s=nice(Math.abs(v));terms.push((v<0?'− ':'+ ')+(s==='1'?'':s+' ')+fn+' '+arg(n,L))})}
+  let ex=terms.join(' ').replace(/^\+ /,'');$('expanded').textContent='f(x) ≈ '+ex+' + …';
+  $('tbl-lab').textContent='First coefficients';
+  let rows='';for(let n=0;n<=8;n++)rows+=`<tr><td>${n}</td><td>${nice(c.a[n])}</td><td>${n?nice(c.b[n]):'—'}</td><td>${dec(c.a[n])}</td><td>${n?dec(c.b[n]):'—'}</td></tr>`;
+  $('tbl').innerHTML='<tr><th>n</th><th>aₙ</th><th>bₙ</th><th>aₙ (dec)</th><th>bₙ (dec)</th></tr>'+rows;
+  drawCoefs();
+}
+function niceX(x,piX){if(piX){const r=frac(Math.abs(x)/PI,8,2e-3);if(r)return tickLabel((x<0?-1:1)*r[0]*PI/r[1],true)}if(Math.abs(x)<2e-3)return '0';return (+x.toFixed(2)).toString().replace('-','−')}
+function decay(c){const xs=[],ys=[];for(let n=3;n<=NMAX;n++){const m=Math.hypot(c.a[n],c.b[n]);if(m>1e-7){xs.push(Math.log(n));ys.push(Math.log(m))}}if(xs.length<5)return null;
+  const mx=xs.reduce((s,t)=>s+t)/xs.length,my=ys.reduce((s,t)=>s+t)/ys.length;let nu=0,de=0;xs.forEach((x,i)=>{nu+=(x-mx)*(ys[i]-my);de+=(x-mx)**2});return -nu/de}
+
+function renderDynamic(){
+  const cv=$('c1'),h=cv.parentElement.clientWidth<520?240:320;
+  if(st.mode==='ft'){
+    const w=st.b-st.a,xr=[st.a-0.5*w,st.b+0.5*w],g=x=>(x>=st.a&&x<=st.b)?st.f(x):0;
+    const vals=[];for(let i=0;i<=300;i++)vals.push(g(xr[0]+(xr[1]-xr[0])*i/300));
+    const F=frame(cv,h,xr,yrange(vals.concat(vals.map(v=>v*1.1))),isPiMult(st.a)&&isPiMult(st.b));
+    drawFn(F,g,css('--given'),2.5);drawFn(F,x=>recon(x,st.W),css('--sum'),2);
+    $('p1-title').textContent='f(x) and its rebuild from frequencies |ω| ≤ W';
+    legend($('leg1'),[[css('--given'),'f(x), zero outside (a, b)'],[css('--sum'),'Rebuilt from F(ω)']]);
+    drawSpectrum();return;
+  }
+  const c=st.coef,L=c.L,lo=st.mode==='fs'?st.a:-L,P=2*L,xr=st.mode==='fs'?[st.a-P,st.b+P]:[-3*L,3*L];
+  const vals=[];for(let i=0;i<=400;i++){const x=xr[0]+(xr[1]-xr[0])*i/400;vals.push(extension(x))}
+  const F=frame(cv,h,xr,yrange(vals.map(v=>v*1.1)),isPiMult(L)&&(st.mode==='hr'||isPiMult(st.a)));
+  drawFn(F,extension,css('--target'),1.6,[6,5]);
+  const g0=st.mode==='fs'?[st.a,st.b]:[0,L];drawFn(F,st.f,css('--given'),3.2,null,g0[0],g0[1]);
+  drawFn(F,x=>partial(x,c,st.N),css('--sum'),2.2);
+  $('p1-title').textContent=`Series with N = ${st.N} term${st.N>1?'s':''}`;
+  legend($('leg1'),[[css('--given'),st.mode==='fs'?'f(x) on (a, b)':'given f on (0, L)'],[css('--target'),'periodic extension',true],[css('--sum'),'partial sum S_N']]);
+  drawCoefs();onSeriesDynamic();
+}
+function drawCoefs(){
+  if(st.mode==='ft')return;const c=st.coef,cv=$('c2');const nshow=20;
+  let mx=0;for(let n=0;n<=nshow;n++)mx=Math.max(mx,Math.abs(n?c.a[n]:c.a[0]/2),Math.abs(c.b[n]));
+  const F=frame(cv,220,[-0.8,nshow+0.8],[0,mx*1.12||1],false);const C=F.c;
+  for(let n=0;n<=nshow;n++){
+    [[n?c.a[n]:c.a[0]/2,css('--alt'),-0.17],[c.b[n],css('--sum'),0.17]].forEach(([v,col,off])=>{v=Math.abs(v);if(v<5e-6)return;const on=n<=st.N&&!(n&&st.mute.has(n));
+      C.globalAlpha=on?1:0.28;C.strokeStyle=col;C.lineWidth=2.5;C.beginPath();C.moveTo(F.X(n+off),F.Y(0));C.lineTo(F.X(n+off),F.Y(v));C.stroke();C.fillStyle=col;C.beginPath();C.arc(F.X(n+off),F.Y(v),3.4,0,2*PI);C.fill();C.globalAlpha=1})}
+  $('p2-title').textContent='Size of each term (|aₙ|, |bₙ|)';
+  legend($('leg2'),[[css('--alt'),'|aₙ| cosine'],[css('--sum'),'|bₙ| sine']]);
+}
+function drawSpectrum(){
+  const ft=st.ft,cv=$('c2');const all=ft.re.concat(ft.im);
+  const F=frame(cv,240,[-ft.Wmax,ft.Wmax],yrange(all),false);const C=F.c;
+  C.fillStyle=css('--acc-bg');C.globalAlpha=0.6;C.fillRect(F.X(-st.W),10,F.X(st.W)-F.X(-st.W),F.h-36);C.globalAlpha=1;
+  const lineArr=(arr,col,dash,lw)=>{C.strokeStyle=col;C.lineWidth=lw;C.setLineDash(dash||[]);C.beginPath();arr.forEach((v,j)=>{const x=F.X(ft.om[j]),y=F.Y(v);j?C.lineTo(x,y):C.moveTo(x,y)});C.stroke();C.setLineDash([])};
+  lineArr(ft.re.map((r,j)=>Math.hypot(r,ft.im[j])),css('--target'),[4,4],1.3);
+  if(!ft.imagOnly)lineArr(ft.re,css('--sum'),null,2.2);
+  if(!ft.realOnly)lineArr(ft.im,css('--given'),null,2.2);
+  $('p2-title').textContent='Spectrum F(ω)';
+  const it=[[css('--target'),'|F(ω)|',true]];if(!ft.imagOnly)it.unshift([css('--sum'),'Re F(ω)']);if(!ft.realOnly)it.push([css('--given'),'Im F(ω)']);it.push([css('--acc-ink'),'kept band |ω| ≤ W']);legend($('leg2'),it);
+}
+
+/* ---------- UI ---------- */
+function setMode(m){
+  stop();st.mode=m;['fs','hr','ft'].forEach(k=>$('m-'+k).setAttribute('aria-pressed',k===m));
+  $('box-L').hidden=m!=='hr';$('box-ab').hidden=m==='hr';
+  $('ab-lab').textContent=m==='ft'?'f(x) lives on (a, b), zero outside':'Interval (a, b), period b − a';
+  $('presets').innerHTML=PRESETS[m].map((p,i)=>`<button class="chip" data-i="${i}">${p.t}</button>`).join('');
+  onModeChange(m);loadPreset(PRESETS[m][0]);
+}
+function loadPreset(p){stop();$('expr').value=p.e;if(p.L)$('L').value=p.L;if(p.a!==undefined){$('a').value=p.a;$('b').value=p.b}st.W=0;if(st.mode!=='ft'){st.N=5}setupSliderSafe();recompute()}
+function setupSliderSafe(){if(st.mode!=='ft')setupSlider()}
+function stop(){if(st.timer){clearInterval(st.timer);st.timer=null;$('play').textContent='Play build-up'}}
+$('m-fs').onclick=()=>setMode('fs');$('m-hr').onclick=()=>setMode('hr');$('m-ft').onclick=()=>setMode('ft');
+$('presets').onclick=e=>{const b=e.target.closest('.chip');if(b)loadPreset(PRESETS[st.mode][+b.dataset.i])};
+$('k-sin').onclick=()=>{st.kind='sin';$('k-sin').setAttribute('aria-pressed',true);$('k-cos').setAttribute('aria-pressed',false);recompute()};
+$('k-cos').onclick=()=>{st.kind='cos';$('k-cos').setAttribute('aria-pressed',true);$('k-sin').setAttribute('aria-pressed',false);recompute()};
+let deb;['expr','a','b','L'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(()=>{stop();recompute()},350)}));
+$('N').oninput=()=>{const v=+$('N').value;if(st.mode==='ft'){st.W=v;$('Nout').textContent=v.toFixed(1)}else{st.N=v;$('Nout').textContent=v}renderDynamic()};
+$('play').onclick=()=>{
+  if(st.timer){stop();return}$('play').textContent='Pause';
+  if(st.mode==='ft'){st.W=0.1;st.timer=setInterval(()=>{st.W+=st.ft.Wmax/60;if(st.W>st.ft.Wmax)st.W=0.1;$('N').value=st.W;$('Nout').textContent=st.W.toFixed(1);renderDynamic()},120)}
+  else{st.N=0;st.timer=setInterval(()=>{st.N=st.N>=NMAX?1:st.N+1;$('N').value=st.N;$('Nout').textContent=st.N;renderDynamic()},260)}
+};
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(st.f){renderStatic();renderDynamic();afterResize()}},150)});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{renderStatic();renderDynamic();afterResize()});
+new MutationObserver(()=>{renderStatic();renderDynamic();afterResize()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+function boot(){if(!window.math){setErr('The maths library did not load. Reload the page.');return}setMode('fs')}
+</script>
+
+<script>
+/* ================= Interactive additions: detector, circles, harmonics, audio, physics, uncertainty ================= */
+const HMAX=12;
+const det={type:'a',n:1,p:1,anim:null};
+const sq={k:1};
+const phys={t:0,last:0};
+let AC=null,tone=null,circT=0;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const vis=new Set();
+const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?vis.add(e.target.id):vis.delete(e.target.id)),{rootMargin:'40px'});
+['c4','c5'].forEach(id=>io.observe($(id)));
+const SUB=n=>String(n).split('').map(d=>'₀₁₂₃₄₅₆₇₈₉'[+d]).join('');
+function isSeries(){return st.mode!=='ft'}
+
+/* ---------- mode + lifecycle ---------- */
+function onModeChange(m){
+  toneStop();
+  $('box-hear').hidden=m==='ft';
+  $('det-panel').hidden=m==='ft';
+  $('ing-panel').hidden=m==='ft';
+  $('phys-panel').hidden=m!=='hr';
+  $('sq-panel').hidden=m!=='ft';
+}
+function afterRecompute(){
+  if(isSeries()){
+    if(st.mode==='hr')det.type=st.kind==='sin'?'b':'a';
+    $('d-a').disabled=st.mode==='hr'&&st.kind==='sin';
+    $('d-b').disabled=st.mode==='hr'&&st.kind==='cos';
+    setDetType(det.type);det.p=1;drawDet();
+    buildHarms();
+    legend($('leg4'),[[css('--given'),'radius √(aₙ²+bₙ²)'],[css('--sum'),'partial sum S_N'],[css('--target'),'f, extended',true]]);
+    if(st.mode==='hr'){
+      const sine=st.kind==='sin';
+      $('phys-title').textContent=sine?'A plucked string':'Heat in an insulated rod';
+      $('phys-go').textContent=sine?'Pluck again':'Restart';
+      $('phys-text').innerHTML=sine
+        ?'The half-range <b>sine</b> series is exactly how a string clamped at both ends moves. Your f(x) is the shape you pull the string into before letting go. Each sine term is a standing wave that fits between the clamps, and term n vibrates n times faster than term 1. Those are the overtones you hear.'
+        :'The half-range <b>cosine</b> series solves the heat equation for a rod with insulated ends. Your f(x) is the starting temperature. Each cosine term fades at its own rate, e^(−n²t), so sharp features smooth out first and only the average a₀/2 survives.';
+      phys.t=0;drawPhys();
+    }
+    toneUpdate();drawCirc();
+  } else {sq.k=1;$('sk').value=1;$('skout').textContent='1.00';drawSq()}
+}
+function afterResize(){if(!st.f)return;if(isSeries()){drawDet();buildHarms();drawCirc();drawPhys()}else drawSq()}
+function onSeriesDynamic(){updateHarmState();toneUpdate();if(reduced){drawCirc();drawPhys()}}
+
+/* ---------- 1. Coefficient detector ---------- */
+function detRange(){if(st.mode==='fs'){const L=(st.b-st.a)/2;return {lo:st.a,hi:st.b,L,fac:1/L,facTxt:'1/L'}}return {lo:0,hi:st.L,L:st.L,fac:2/st.L,facTxt:'2/L'}}
+function testW(x,n,ty,L){const k=n*PI/L;return ty==='a'?Math.cos(k*x):Math.sin(k*x)}
+function setDetType(t){
+  det.type=t;$('d-a').setAttribute('aria-pressed',t==='a');$('d-b').setAttribute('aria-pressed',t==='b');
+  const s=$('dn');s.min=t==='b'?1:0;if(det.n<+s.min)det.n=+s.min;s.value=det.n;$('dnout').textContent=det.n;
+}
+function vcursor(F,x){const c=F.c;c.strokeStyle=css('--ink');c.lineWidth=1.2;c.setLineDash([3,3]);c.beginPath();c.moveTo(F.X(x),10);c.lineTo(F.X(x),F.h-26);c.stroke();c.setLineDash([])}
+function drawDet(){
+  if(!isSeries()||!st.coef||$('det-panel').hidden)return;
+  const R=detRange(),n=det.n,ty=det.type,piX=isPiMult(R.L)&&(st.mode==='hr'||isPiMult(R.lo));
+  const fv=x=>{const v=st.f(x);return isNaN(v)?0:v},tw=x=>testW(x,n,ty,R.L),pr=x=>fv(x)*tw(x);
+  const M=1600,h=(R.hi-R.lo)/M,xc=R.lo+det.p*(R.hi-R.lo);
+  let tot=0,run=0,fmax=0;
+  for(let i=0;i<M;i++){const x=R.lo+h*(i+.5),v=fv(x);fmax=Math.max(fmax,Math.abs(v));const p=v*tw(x)*h;tot+=p;if(x<=xc)run+=p}
+  fmax=fmax||1;
+  const coef=R.fac*tot,runC=R.fac*run,done=det.p>=1;
+  const H=$('c3').parentElement.clientWidth<520?170:210;
+  const vals=[];for(let i=0;i<=240;i++)vals.push(fv(R.lo+(R.hi-R.lo)*i/240));
+  const F=frame($('c3'),H,[R.lo,R.hi],yrange(vals.concat([fmax,-fmax])),piX);
+  const mean=(n===0&&ty==='a')?coef/2:null;
+  drawFn(F,x=>fmax*tw(x),css('--alt'),2,[6,4]);
+  drawFn(F,fv,css('--given'),2.8);
+  if(mean!==null&&done){drawFn(F,()=>mean,css('--sum'),2.4,[2,4])}
+  if(!done)vcursor(F,xc);
+  const pv=[];for(let i=0;i<=300;i++)pv.push(pr(R.lo+(R.hi-R.lo)*i/300));
+  const F2=frame($('c3b'),Math.round(H*0.82),[R.lo,R.hi],yrange(pv),piX),c=F2.c;
+  const cols=320,dx=(R.hi-R.lo)/cols,pos=css('--pos'),neg=css('--neg');
+  c.globalAlpha=.38;
+  for(let i=0;i<cols;i++){const x=R.lo+dx*(i+.5);if(x>xc)break;const v=pr(x),y0=F2.Y(0),y1=F2.Y(v);c.fillStyle=v>=0?pos:neg;c.fillRect(F2.X(x-dx/2),Math.min(y0,y1),F2.X(x+dx/2)-F2.X(x-dx/2)+.6,Math.abs(y1-y0))}
+  c.globalAlpha=1;
+  drawFn(F2,pr,css('--ink'),1.5);
+  if(!done)vcursor(F2,xc);
+  const wname=(ty==='a'?'cos':'sin')+'('+(n===0?'0':arg(n,R.L))+')';
+  const lg=[[css('--given'),'f(x)'],[css('--alt'),wname+' (scaled to f)',true]];if(mean!==null)lg.push([css('--sum'),'a₀/2 = average height',true]);legend($('leg3'),lg);
+  const sym=(ty==='a'?'a':'b')+SUB(n),shown=done?coef:runC;
+  $('dread').innerHTML=`Area under the product${done?'':' so far'}: <b>${dec(done?tot:run)}</b><br>${sym} = ${R.facTxt} × area = <b class="${shown>=0?'pos':'neg'}">${dec(shown)}</b>${done&&Math.abs(coef)>5e-6?' &nbsp;(exactly '+nice(coef)+')':''}`+(mean!==null&&done?`<br>a₀/2 = <b>${nice(mean)}</b>: the dotted line, the average height of f`:'');
+  const allA=st.coef.a.slice(1).every(t=>Math.abs(t)<5e-6),allB=st.coef.b.slice(1).every(t=>Math.abs(t)<5e-6);
+  let why;
+  if(n===0)why='<b>a₀ is not a wave.</b> cos(0·x) = 1, so this integral simply adds up f. Half of a₀ is the average height of f: the level every other wave oscillates around. Add a constant to f and only a₀ changes. In the sound it is silent, because your ear cannot hear a constant.';
+  else if(st.mode==='fs'&&ty==='b'&&allB&&!allA)why='<b>f is even and sin is odd, so their product is odd.</b> Every green area on one side has a matching red area on the other, and they cancel exactly. That is why every bₙ = 0: even functions need only cosines.';
+  else if(st.mode==='fs'&&ty==='a'&&allA&&!allB)why='<b>f is odd and cos is even, so their product is odd.</b> The green and red areas cancel exactly, so every aₙ = 0: odd functions need only sines.';
+  else if(Math.abs(coef)<5e-5)why=`<b>The areas cancel.</b> Green and red balance out exactly, so f contains none of harmonic n = ${n}. Try n = ${n+1}.`;
+  else why=`Where f and the test wave rise and fall together the product is positive (green); where they move opposite it is negative (red). The leftover area measures <b>how much f looks like this wave</b>.${coef<0?' A negative value means f looks like the wave turned upside down.':''} Raise n: the wave wiggles faster, more of the area cancels, and the coefficient shrinks.`;
+  $('dwhy').innerHTML=why;
+}
+$('dn').oninput=()=>{det.n=+$('dn').value;$('dnout').textContent=det.n;cancelAnimationFrame(det.anim);det.p=1;drawDet()};
+$('d-a').onclick=()=>{setDetType('a');det.p=1;drawDet()};
+$('d-b').onclick=()=>{setDetType('b');det.p=1;drawDet()};
+$('dscan').onclick=()=>{cancelAnimationFrame(det.anim);const t0=performance.now();const step=now=>{det.p=Math.min(1,(now-t0)/2400);drawDet();if(det.p<1)det.anim=requestAnimationFrame(step)};det.p=0;det.anim=requestAnimationFrame(step)};
+
+/* ---------- 2. Harmonic switches + spinning circles ---------- */
+function buildHarms(){
+  if(!isSeries()||!st.coef)return;
+  const el=$('harms'),c=st.coef;let mx=0;for(let n=1;n<=HMAX;n++)mx=Math.max(mx,Math.hypot(c.a[n],c.b[n]));
+  el.innerHTML='';
+  for(let n=1;n<=HMAX;n++){
+    const amp=Math.hypot(c.a[n],c.b[n]),zero=amp<5e-6;
+    const b=document.createElement('button');b.className='harm';b.dataset.n=n;b.disabled=zero;
+    b.title=zero?`Harmonic ${n} is absent from this f`:`Switch harmonic ${n} on or off`;
+    b.innerHTML=`<div class="hw"><canvas aria-hidden="true"></canvas></div><span>n=${n} · ${zero?'0':amp.toFixed(3)}</span>`;
+    b.onclick=()=>{st.mute.has(n)?st.mute.delete(n):st.mute.add(n);renderDynamic()};
+    el.appendChild(b);
+    const cv=b.querySelector('canvas'),{c:x,w,h}=canvasCtx(cv,30),A=c.a[n],B=c.b[n];
+    x.strokeStyle=css('--line');x.beginPath();x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();
+    if(!zero){x.strokeStyle=css('--sum');x.lineWidth=1.7;x.beginPath();for(let i=0;i<=w;i++){const t=i/w*2*PI,v=(A*Math.cos(n*t)+B*Math.sin(n*t))/(mx||1),y=h/2-v*(h/2-2);i?x.lineTo(i,y):x.moveTo(i,y)}x.stroke()}
+  }
+  updateHarmState();
+}
+function updateHarmState(){
+  document.querySelectorAll('#harms .harm').forEach(b=>{const n=+b.dataset.n;b.setAttribute('aria-pressed',!st.mute.has(n));b.classList.toggle('beyond',n>st.N&&!b.disabled)});
+  const off=[...st.mute].filter(n=>n<=st.N).length;
+  $('h-note').textContent=(st.N<HMAX?`Dashed: above N = ${st.N}, not in the sum yet. `:'')+(off?`${off} harmonic${off>1?'s':''} switched off.`:'');
+}
+$('h-all').onclick=()=>{st.mute.clear();renderDynamic()};
+$('h-odd').onclick=()=>{st.mute.clear();for(let n=2;n<=NMAX;n+=2)st.mute.add(n);renderDynamic()};
+$('h-even').onclick=()=>{st.mute.clear();for(let n=1;n<=NMAX;n+=2)st.mute.add(n);renderDynamic()};
+
+function drawCirc(){
+  if(!isSeries()||!st.coef||$('ing-panel').hidden)return;
+  const cv=$('c4'),H=cv.parentElement.clientWidth<520?220:280,{c,w,h}=canvasCtx(cv,H);
+  c.fillStyle=css('--panel');c.fillRect(0,0,w,h);
+  const co=st.coef,L=co.L,N=st.N,th=reduced?1.1:circT%(2*PI),dc=co.a[0]/2;
+  const terms=[];let Rs=0;
+  for(let n=1;n<=N;n++){if(st.mute.has(n))continue;const r=Math.hypot(co.a[n],co.b[n]);if(r<5e-6)continue;terms.push({n,r,ph:Math.atan2(co.b[n],co.a[n])});Rs+=r}
+  const K=260,gv=[],tv=[];for(let i=0;i<=K;i++){const t=i/K*2*PI;gv.push(partial(t*L/PI,co,N));const e=extension(t*L/PI);tv.push(isFinite(e)?e:0)}
+  let lo=Math.min(dc-Rs,...gv,...tv),hi=Math.max(dc+Rs,...gv,...tv);if(hi-lo<1e-9){hi+=1;lo-=1}const pad=(hi-lo)*.08;lo-=pad;hi+=pad;
+  const sc=(h-16)/(hi-lo),Y=v=>h-8-(v-lo)*sc;
+  const cx=Math.max(Rs*sc,6)+10,gx0=cx+Rs*sc+30,GX=t=>gx0+t/(2*PI)*(w-10-gx0);
+  c.strokeStyle=css('--line');c.lineWidth=1;c.beginPath();c.moveTo(gx0,Y(0));c.lineTo(w-10,Y(0));c.stroke();
+  const pl=(arr,col,lw,dash)=>{c.strokeStyle=col;c.lineWidth=lw;c.setLineDash(dash||[]);c.beginPath();arr.forEach((v,i)=>{const x=GX(i/K*2*PI),y=Y(v);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();c.setLineDash([])};
+  pl(tv,css('--target'),1.4,[5,4]);pl(gv,css('--sum'),2.3);
+  let px=cx,py=Y(dc);
+  terms.forEach((t,i)=>{const r=t.r*sc,a=t.n*th-t.ph;c.globalAlpha=Math.max(.22,.75-i*.05);c.strokeStyle=css('--muted');c.lineWidth=1;c.beginPath();c.arc(px,py,r,0,2*PI);c.stroke();c.globalAlpha=1;
+    const nx=px+r*Math.sin(a),ny=py-r*Math.cos(a);c.strokeStyle=css('--given');c.lineWidth=1.8;c.beginPath();c.moveTo(px,py);c.lineTo(nx,ny);c.stroke();px=nx;py=ny});
+  c.strokeStyle=css('--muted');c.setLineDash([3,3]);c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(GX(th),py);c.stroke();c.setLineDash([]);
+  c.fillStyle=css('--given');c.beginPath();c.arc(px,py,3.6,0,2*PI);c.fill();
+  c.fillStyle=css('--sum');c.beginPath();c.arc(GX(th),py,5,0,2*PI);c.fill();
+  c.fillStyle=css('--muted');c.font='500 12.5px Archivo, sans-serif';c.fillText(`${terms.length} circle${terms.length===1?'':'s'} on`,8,16);
+}
+
+/* ---------- 3. Sound ---------- */
+function ac(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC}
+function waveArrays(){
+  const N=Math.max(1,st.N),re=new Float32Array(N+1),im=new Float32Array(N+1);let any=false;
+  for(let n=1;n<=N;n++){if(st.mute.has(n))continue;re[n]=st.coef.a[n];im[n]=st.coef.b[n];if(Math.abs(re[n])+Math.abs(im[n])>1e-6)any=true}
+  let pk=0;for(let i=0;i<512;i++){const t=i/512*2*PI;let s=0;for(let n=1;n<=N;n++)s+=re[n]*Math.cos(n*t)+im[n]*Math.sin(n*t);pk=Math.max(pk,Math.abs(s))}
+  const g=any&&pk>1e-9?1/pk:0;for(let n=1;n<=N;n++){re[n]*=g;im[n]*=g}
+  return {re,im,any};
+}
+function mkWave(A){const {re,im,any}=waveArrays();return {w:A.createPeriodicWave(re,im,{disableNormalization:true}),any}}
+function toneStart(){
+  if(!st.coef)return;const A=ac(),{w,any}=mkWave(A),osc=A.createOscillator(),g=A.createGain(),t=A.currentTime;
+  osc.setPeriodicWave(w);osc.frequency.value=+$('f0').value;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(any?.16:0,t+.06);
+  osc.connect(g);g.connect(A.destination);osc.start();tone={osc,g};
+  $('tone').setAttribute('aria-pressed','true');$('tone').textContent='■ Stop tone';
+}
+function toneStop(){
+  if(!tone)return;const t=AC.currentTime,g=tone.g.gain;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(0,t+.06);tone.osc.stop(t+.09);tone=null;
+  $('tone').setAttribute('aria-pressed','false');$('tone').textContent='▶ Hold tone';
+}
+function toneUpdate(){if(!tone||!st.coef||!isSeries())return;const {w,any}=mkWave(AC);tone.osc.setPeriodicWave(w);tone.g.gain.setTargetAtTime(any?.16:0,AC.currentTime,.03)}
+function pluck(){
+  if(!st.coef)return;const A=ac(),sr=A.sampleRate,D=2.4,len=Math.floor(sr*D),buf=A.createBuffer(1,len,sr),d=buf.getChannelData(0),f0=+$('f0').value,co=st.coef,terms=[];
+  for(let n=1;n<=st.N;n++){if(st.mute.has(n))continue;if(n*f0>sr/2.2)break;const a=co.a[n],b=co.b[n];if(Math.abs(a)+Math.abs(b)<1e-6)continue;terms.push([n,a,b,1.1+.7*n])}
+  if(!terms.length)return;
+  let pk=0;for(let i=0;i<len;i++){const t=i/sr;let s=0;for(const [n,a,b,dk] of terms){const p=2*PI*n*f0*t;s+=(a*Math.cos(p)+b*Math.sin(p))*Math.exp(-dk*t)}d[i]=s;if(Math.abs(s)>pk)pk=Math.abs(s)}
+  const atk=Math.floor(sr*.004);for(let i=0;i<len;i++)d[i]=d[i]/pk*.45*(i<atk?i/atk:1);
+  const src=A.createBufferSource();src.buffer=buf;src.connect(A.destination);src.start();
+}
+$('tone').onclick=()=>tone?toneStop():toneStart();
+$('pluck').onclick=pluck;
+$('f0').oninput=()=>{const v=+$('f0').value;$('f0out').textContent=v+' Hz';if(tone)tone.osc.frequency.setTargetAtTime(v,AC.currentTime,.02)};
+
+/* ---------- 4. Half-range physics ---------- */
+function drawPhys(){
+  if(st.mode!=='hr'||!st.coef||$('phys-panel').hidden)return;
+  const co=st.coef,L=co.L,N=st.N,t=phys.t,cv=$('c5'),H=cv.parentElement.clientWidth<520?210:250,sine=st.kind==='sin';
+  let mn=Infinity,mx=-Infinity;for(let i=0;i<=240;i++){const v=st.f(L*i/240);if(isFinite(v)){mn=Math.min(mn,v);mx=Math.max(mx,v)}}
+  if(!isFinite(mn)){mn=-1;mx=1}const fm=Math.max(Math.abs(mn),Math.abs(mx))||1;
+  const u=x=>{let s=sine?0:co.a[0]/2;for(let n=1;n<=N;n++){if(st.mute.has(n))continue;s+=sine?co.b[n]*Math.sin(n*PI*x/L)*Math.cos(2.4*n*t)*Math.exp(-.03*n*t):co.a[n]*Math.cos(n*PI*x/L)*Math.exp(-.35*n*n*t)}return s};
+  const yr=sine?[-fm*1.3,fm*1.3]:(()=>{const p=(mx-mn||1)*.25;return [Math.min(mn-p,0),mx+p]})();
+  const F=frame(cv,H,[0,L],yr,isPiMult(L)),c=F.c;
+  if(!sine){const cols=180;c.globalAlpha=.55;for(let i=0;i<cols;i++){const x=L*(i+.5)/cols,v=u(x),q=Math.max(0,Math.min(1,(v-mn)/((mx-mn)||1)));c.fillStyle=`hsl(${220-215*q},85%,55%)`;const y0=F.Y(yr[0]),y1=F.Y(v);c.fillRect(F.X(L*i/cols),Math.min(y0,y1),F.X(L*(i+1)/cols)-F.X(L*i/cols)+.6,Math.abs(y0-y1))}c.globalAlpha=1}
+  drawFn(F,x=>st.f(x),css('--target'),1.4,[5,4],0,L);
+  drawFn(F,u,sine?css('--sum'):css('--ink'),3,null,0,L);
+  if(sine){c.fillStyle=css('--ink');[0,L].forEach(x=>{c.beginPath();c.arc(F.X(x),F.Y(0),5,0,2*PI);c.fill()})}
+  $('phys-read').innerHTML=sine
+    ?`t = ${t.toFixed(1)} s &nbsp;·&nbsp; u(x,t) = Σ bₙ sin(nπx/L) cos(nωt), using N = ${N} modes.<br>Mode n vibrates at n·ω. Press <b>Pluck again</b> to restart the string and hear the same series as sound.`
+    :`t = ${t.toFixed(1)} s &nbsp;·&nbsp; u(x,t) = a₀/2 + Σ aₙ cos(nπx/L) e^(−n²t), using N = ${N} modes.<br>The rod settles to <b>a₀/2 = ${nice(co.a[0]/2)}</b>, the average starting temperature. Colour shows temperature, blue cold to red hot.`;
+}
+$('phys-go').onclick=()=>{phys.t=0;if(st.kind==='sin')pluck();drawPhys()};
+
+/* ---------- 5. Fourier transform: squeeze + hear ---------- */
+function ftAt(om){const ft=st.ft;if(Math.abs(om)>ft.Wmax)return [0,0];const j=(om+ft.Wmax)/(2*ft.Wmax)*(ft.om.length-1),i0=Math.floor(j),fr=j-i0,i1=Math.min(i0+1,ft.om.length-1);return [ft.re[i0]*(1-fr)+ft.re[i1]*fr,ft.im[i0]*(1-fr)+ft.im[i1]*fr]}
+function halfWidth(fn,lo,hi){const M=3000,h=(hi-lo)/M,v=[];let mx=0;for(let i=0;i<M;i++){let t=Math.abs(fn(lo+h*(i+.5)));if(!isFinite(t))t=0;v.push(t);mx=Math.max(mx,t)}return mx?v.filter(t=>t>=mx/2).length*h:0}
+function drawSq(){
+  if(st.mode!=='ft'||!st.ft||$('sq-panel').hidden)return;
+  const k=sq.k,a=st.a,b=st.b,w0=b-a,ft=st.ft,f1=x=>{if(x<a||x>b)return 0;const v=st.f(x);return isFinite(v)?v:0},g=x=>f1(x/k);
+  const H=$('c6').parentElement.clientWidth<420?180:210;
+  const xr=[Math.min(3*a,a)-.1*w0,Math.max(3*b,b)+.1*w0],vals=[];for(let i=0;i<=200;i++)vals.push(f1(a+w0*i/200));
+  const F=frame($('c6'),H,xr,yrange(vals),false);drawFn(F,f1,css('--target'),1.3,[5,4]);drawFn(F,g,css('--given'),2.6);
+  const Wp=ft.Wmax*1.2,G=om=>{const [r,i]=ftAt(k*om);return k*Math.hypot(r,i)},F0=om=>{const [r,i]=ftAt(om);return Math.hypot(r,i)};
+  let gm=0;for(let i=0;i<=400;i++){const o=-Wp+2*Wp*i/400;gm=Math.max(gm,G(o),F0(o))}
+  const F2=frame($('c7'),H,[-Wp,Wp],[0,gm*1.12||1],false);drawFn(F2,F0,css('--target'),1.3,[5,4]);drawFn(F2,G,css('--sum'),2.6);
+  const dx=k*halfWidth(f1,a,b),dw=halfWidth(F0,-ft.Wmax,ft.Wmax)/k,Dur=.15*k,hz=dw*w0/(2*PI*.15);
+  const verdict=Dur<.06?'You hear a <b>click</b>: too short to have a clear pitch.':Dur>.25?'You hear a <b>clear note</b>: long enough for one frequency to dominate.':'Somewhere between a click and a note.';
+  $('sq-read').innerHTML=`Pulse width Δx ≈ <b>${dx.toFixed(2)}</b> &nbsp;·&nbsp; spectrum width Δω ≈ <b>${dw.toFixed(2)}</b> &nbsp;·&nbsp; Δx·Δω ≈ <b>${(dx*dw).toFixed(2)}</b>, the same for every k<br>As sound: a ${Math.round(Dur*1000)} ms burst of 660 Hz, spread over about ${Math.round(hz)} Hz of frequencies. ${verdict}`;
+}
+function playPulse(){
+  if(!st.ft)return;const A=ac(),sr=A.sampleRate,Dur=.15*sq.k,a=st.a,b=st.b,n=Math.floor(sr*Dur),buf=A.createBuffer(1,n+Math.floor(sr*.05),sr),d=buf.getChannelData(0);
+  let fm=0;for(let i=0;i<=400;i++){const v=st.f(a+(b-a)*i/400);if(isFinite(v))fm=Math.max(fm,Math.abs(v))}fm=fm||1;
+  for(let i=0;i<n;i++){const t=i/sr;let e=st.f(a+(b-a)*t/Dur);if(!isFinite(e))e=0;d[i]=e/fm*Math.sin(2*PI*660*t)*.5}
+  const src=A.createBufferSource();src.buffer=buf;src.connect(A.destination);src.start();
+}
+$('sk').oninput=()=>{sq.k=+$('sk').value;$('skout').textContent=sq.k.toFixed(2);drawSq()};
+$('sq-play').onclick=playPulse;
+
+/* ---------- animation loop + boot ---------- */
+function tick(now){
+  if(isSeries()&&st.coef&&!reduced){
+    if(vis.has('c4')){circT+=.012;drawCirc()}
+    if(st.mode==='hr'&&vis.has('c5')){phys.t+=Math.min(.05,(now-(phys.last||now))/1000);drawPhys()}
+  }
+  phys.last=now;requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+if(document.readyState==='loading')addEventListener('DOMContentLoaded',boot);else boot();
+</script>
+<a href="../index.html" style="position:fixed;left:14px;bottom:14px;z-index:99999;font:600 13px system-ui,sans-serif;background:rgba(10,14,22,.88);color:#fff;padding:9px 14px;border-radius:999px;text-decoration:none;border:1px solid rgba(255,255,255,.25);box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer">&larr; Mathematics Lab</a>
+</body></html>
